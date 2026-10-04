@@ -1,7 +1,7 @@
 import { Page, ElementHandle } from "playwright";
 import { GraphContext } from "../../../browserExecutor.js";
 import { getElement, verifyAction } from "../../../browserExecutor.js";
-import { SuccessPatterns } from "../../../successPatterns.js";
+import { recordActionSuccess } from "../../../successPatterns.js";
 import { SelectorFallbacks } from "../../elements/strategies/SelectorFallbacks.js";
 import { ensureElementVisible } from "../../../utils/visibilityUtils.js";
 import { highlightElement, setOverlayStatus } from "../../../utils/uiEffects.js";
@@ -347,14 +347,7 @@ export async function clickHandler(ctx: GraphContext): Promise<string> {
       ctx.lastSelector = ctx.action.element;
     }
 
-    // Optionally record success patterns
-    try {
-      const domain = new URL(ctx.page.url()).hostname;
-      const successPatternsInstance = new SuccessPatterns();
-      successPatternsInstance.recordSuccess(ctx.action, domain);
-    } catch (spError) {
-      logger.error('Error recording success pattern', spError);
-    }
+    recordActionSuccess(ctx.action, ctx.page.url());
 
     return "getPageState";
   } catch (error) {

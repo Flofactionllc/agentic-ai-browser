@@ -1,5 +1,6 @@
 import { GraphContext } from "../../../browserExecutor.js";
 import logger from "../../../utils/logger.js";
+import { recordActionFailure } from "../../../successPatterns.js";
 
 // Maximum allowed retries before giving up
 const MAX_RETRIES = 7;
@@ -14,6 +15,7 @@ export async function handleFailureHandler(ctx: GraphContext): Promise<string> {
   ctx.lastActionSuccess = false;
   ctx.successCount = 0;
   ctx.retries = (ctx.retries || 0) + 1;
+  recordActionFailure();
 
   if (ctx.retries > MAX_RETRIES) {
     logger.error('Max retries exceeded', {
