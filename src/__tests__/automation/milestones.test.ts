@@ -58,6 +58,35 @@ describe('Milestone Tracking', () => {
       expect(ctx.milestones).toContain('goal_completion');
       expect(ctx.recognizedMilestones).toEqual([]);
     });
+
+    test('fills milestones when the list was initialized empty', () => {
+      const ctx = {
+        userGoal: 'search for papers',
+        history: [],
+        milestones: [] as string[],
+        recognizedMilestones: [] as string[]
+      } as GraphContext;
+
+      initializeMilestones(ctx);
+
+      expect(ctx.milestones).toContain('reach_search_page');
+      expect(ctx.milestones).toContain('goal_completion');
+    });
+
+    test('rebuilds milestones when the goal changes', () => {
+      const ctx = {
+        userGoal: 'login to the archive',
+        history: [],
+        milestones: ['reach_search_page', 'goal_completion'],
+        recognizedMilestones: ['reach_search_page']
+      } as GraphContext;
+
+      initializeMilestones(ctx, true);
+
+      expect(ctx.milestones).toContain('reach_login_page');
+      expect(ctx.milestones).not.toContain('reach_search_page');
+      expect(ctx.recognizedMilestones).toEqual([]);
+    });
   });
 
   describe('checkMilestones', () => {

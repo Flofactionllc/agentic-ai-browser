@@ -4,19 +4,20 @@ import { Page } from 'playwright';
 // Create mock page helper
 function createMockPage() {
   return {
-    evaluate: jest.fn().mockImplementation((script, ...args) => {
-      // Simple mock to simulate returning elements
-      if (typeof script === 'string' && script.includes('isElementVisible')) {
-        return true; // The visibility helper function
+    waitForTimeout: jest.fn().mockResolvedValue(undefined),
+    evaluate: jest.fn().mockImplementation(async (script: unknown, ...args: unknown[]) => {
+      const source = typeof script === 'function' ? script.toString() : String(script);
+      if (source.includes('readyState')) {
+        return false;
       }
-      
-      if (args[0]?.includes('a')) {
+
+      const selector = typeof args[0] === 'string' ? args[0] : '';
+      if (selector.includes('a')) {
         return [
-          { tagName: 'A', textContent: 'Click here', href: 'https://example.com' }
+          { tagName: 'a', text: 'Click here', href: 'https://example.com' }
         ];
-      } else {
-        return [];
       }
+      return [];
     })
   } as unknown as Page;
 }

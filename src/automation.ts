@@ -3,7 +3,7 @@ import { LLMProcessor } from './core/llm/llmProcessor.js';
 import readline from 'readline';
 import fs from 'fs';
 import path from 'path';
-import { SuccessPatterns } from './successPatterns.js';
+import { getSharedSuccessPatterns } from './successPatterns.js';
 import { getAgentState } from './utils/agentState.js';
 import logger from './utils/logger.js';
 
@@ -126,7 +126,7 @@ async function processUserFunctionCall(ctx: GraphContext, functionCall: string):
     
     // Reinitialize milestones for the new goal
     const { initializeMilestones } = await import('./core/automation/milestones.js');
-    initializeMilestones(ctx);
+    initializeMilestones(ctx, true);
     
     ctx.actionFeedback = `👤 FUNCTION ACTIVATED: ${functionCall} has been processed and goal updated.`;
   } else {
@@ -224,7 +224,7 @@ Enter a function call like ::functionName("arg1") or new instructions:`;
         ctx.history.push(`User updated goal to: ${newGoal}`);
         // Use the extracted initializeMilestones function from the milestones module
         const { initializeMilestones } = await import('./core/automation/milestones.js');
-        initializeMilestones(ctx);
+        initializeMilestones(ctx, true);
       }
 
       logger.info("Received human response", {
@@ -373,7 +373,7 @@ registerState("chooseAction", async (ctx: GraphContext) => {
     if (ctx.page.url()) {
       try {
         const domain = new URL(ctx.page.url()).hostname;
-        const successPatternsInstance = new SuccessPatterns();
+        const successPatternsInstance = getSharedSuccessPatterns();
         const domainSuggestions = successPatternsInstance.getSuggestionsForDomain(domain);
         
         if (domainSuggestions.length > 0) {
@@ -402,22 +402,19 @@ registerState("chooseAction", async (ctx: GraphContext) => {
 
     logger.browser.action('nextAction', action);
     
-    // Smart triggering for human help
-    if (ctx.retries && ctx.retries >= 2) {
-      const shouldSendHumanMessage = Math.random() < 0.7;
-      
-      if (shouldSendHumanMessage) {
-        const failedActionType = ctx.actionHistory?.[ctx.actionHistory.length - 1]?.type || 'action';
-        
-        logger.info('Switching to human help', {
-          retries: ctx.retries,
-          lastFailedAction: failedActionType
-        });
-        
-        ctx.action = createSendHumanMessageAction(`I've tried ${ctx.retries} times to ${failedActionType} but keep failing. The page title is "${await ctx.page.title()}". What should I try next?`);
-        
-        return "sendHumanMessage";
-      }
+    // Ask for help only after the agent has had room to use prior successes
+    // and change strategy. Earlier retries stay autonomous.
+    if ((ctx.retries ?? 0) >= 4) {
+      const failedActionType = ctx.actionHistory?.[ctx.actionHistory.length - 1]?.type || 'action';
+
+      logger.info('Switching to human help', {
+        retries: ctx.retries,
+        lastFailedAction: failedActionType
+      });
+
+      ctx.action = createSendHumanMessageAction(`I've tried ${ctx.retries} times to ${failedActionType} but keep failing. The page title is "${await ctx.page.title()}". What should I try next?`);
+
+      return "sendHumanMessage";
     }
 
     // Check for redundant actions - using the extracted function
