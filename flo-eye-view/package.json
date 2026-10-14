@@ -1,0 +1,29 @@
+{
+  "name": "@flofaction/flo-eye-view",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Flo Eye View — Flofaction Mission Control: photorealistic 3D situational awareness per business division. Sellable ops globe for Emergency Services, Insurance, Media, Staffing, HQ, LUAP, and Books.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Flofaction LLC",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "server": "node server/index.js",
+    "start": "node server/index.js",
+    "doctor": "node scripts/doctor.mjs"
+  },
+  "dependencies": {
+    "cesium": "^1.124.0",
+    "cors": "^2.8.5",
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "vite": "^6.0.0",
+    "vite-plugin-cesium": "^1.2.23"
+  }
+}
