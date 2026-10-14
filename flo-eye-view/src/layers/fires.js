@@ -1,18 +1,14 @@
 import { Cartesian3, Color } from 'cesium';
 
-const WFIGS_URL =
-  'https://services3.arcgis.com/T4QMspbfLg3qTGWY/arcgis/rest/services/WFIGS_Interagency_Perimeters_Current/FeatureServer/0/query';
-
-/** NIFC WFIGS current fire perimeters — keyless. */
+/** NIFC WFIGS current fire perimeters — keyless via local /api/fire-perimeters proxy. */
 export function createFiresLayer(viewer, apiBase = '') {
   const entities = [];
 
   async function refresh() {
     clearEntities();
     try {
-      const url = apiBase
-        ? `${apiBase}/api/fire-perimeters`
-        : `${WFIGS_URL}?where=1%3D1&outFields=IncidentName,PercentContained,FeatureCategory,GISAcres&f=geojson&resultRecordCount=200`;
+      // Prefer local proxy (avoids browser CORS). Direct WFIGS is server-side only.
+      const url = `${apiBase}/api/fire-perimeters`;
       const res = await fetch(url);
       if (!res.ok) throw new Error(`fires ${res.status}`);
       const geo = await res.json();

@@ -9,7 +9,7 @@ import {
 } from 'cesium';
 
 /**
- * NOAA NHC active storms via Flo Eye View proxy (or direct CurrentStorms.json).
+ * NOAA NHC active storms via Flo Eye View proxy (Vite → :5181).
  */
 export function createCyclonesLayer(viewer, apiBase = '') {
   const entities = [];
@@ -18,35 +18,42 @@ export function createCyclonesLayer(viewer, apiBase = '') {
   async function refresh() {
     clearEntities();
     try {
-      const url = apiBase
-        ? `${apiBase}/api/cyclones`
-        : 'https://www.nhc.noaa.gov/CurrentStorms.json';
+      const url = `${apiBase}/api/cyclones`;
       const res = await fetch(url);
       if (!res.ok) throw new Error(`cyclones ${res.status}`);
       const data = await res.json();
       const storms = normalizeStorms(data);
-      for (const storm of storms) {
-        plotStorm(storm);
-      }
+      for (const storm of storms) plotStorm(storm);
       viewer.scene.requestRender();
     } catch (err) {
       console.warn('[flo-eye] cyclones layer:', err.message);
     }
   }
 
+  function parseCoord(value, numeric) {
+    if (Number.isFinite(Number(numeric))) return Number(numeric);
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    if (typeof value !== 'string') return NaN;
+    const m = value.trim().match(/^(-?\d+(?:\.\d+)?)\s*([NSEW])?$/i);
+    if (!m) return Number(value);
+    let n = Number(m[1]);
+    const hemi = (m[2] || '').toUpperCase();
+    if (hemi === 'S' || hemi === 'W') n = -Math.abs(n);
+    if (hemi === 'N' || hemi === 'E') n = Math.abs(n);
+    return n;
+  }
+
   function normalizeStorms(data) {
-    // CurrentStorms.json shape: { activeStorms: [ { id, name, ... basin fields } ] }
     const list = data.activeStorms ?? data.storms ?? (Array.isArray(data) ? data : []);
     return list
       .map((s) => {
-        const lat = Number(s.latitude ?? s.lat ?? s.Lat);
-        const lon = Number(s.longitude ?? s.lon ?? s.Lon);
+        const lat = parseCoord(s.latitude ?? s.lat, s.latitudeNumeric);
+        const lon = parseCoord(s.longitude ?? s.lon, s.longitudeNumeric);
         if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
         return {
           id: s.id ?? s.stormID ?? `${s.name}-${lat}`,
           name: s.name ?? s.stormName ?? 'Active storm',
           classification: s.classification ?? s.intensity ?? s.Status ?? '',
-          movement: s.movementDir ?? s.movement ?? '',
           lat,
           lon,
           track: Array.isArray(s.track) ? s.track : [],
@@ -86,23 +93,23 @@ export function createCyclonesLayer(viewer, apiBase = '') {
     if (storm.track.length > 1) {
       const positions = storm.track
         .map((p) => {
-          const lat = Number(p.lat ?? p.latitude);
-          const lon = Number(p.lon ?? p.longitude);
+          const lat = parseCoord(p.lat ?? p.latitude, p.latitudeNumeric);
+          const lon = parseCoord(p.lon ?? p.longitude, p.longitudeNumeric);
           if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
           return Cartesian3.fromDegrees(lon, lat);
         })
         .filter(Boolean);
       if (positions.length > 1) {
-        const line = viewer.entities.add({
-          id: `cyclone-track-${storm.id}`,
-          polyline: {
-            positions,
-            width: 3,
-            material: Color.fromCssColorString('#ff6b4a').withAlpha(0.85),
-            clampToGround: false,
-          },
-        });
-        entities.push(line);
+        entities.push(
+          viewer.entities.add({
+            id: `cyclone-track-${storm.id}`,
+            polyline: {
+              positions,
+              width: 3,
+              material: Color.fromCssColorString('#ff6b4a').withAlpha(0.85),
+            },
+          }),
+        );
       }
     }
   }
