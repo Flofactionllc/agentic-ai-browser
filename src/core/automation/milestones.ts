@@ -2,10 +2,13 @@ import { GraphContext } from '../../browserExecutor.js';
 import logger from '../../utils/logger.js';
 
 // Initialize milestones based on the user goal
-export function initializeMilestones(ctx: GraphContext): void {
-  if (!ctx.milestones) {
-    ctx.milestones = [];
-    ctx.recognizedMilestones = [];
+export function initializeMilestones(ctx: GraphContext, force = false): void {
+  if (!force && ctx.milestones && ctx.milestones.length > 0) {
+    return;
+  }
+
+  ctx.milestones = [];
+  ctx.recognizedMilestones = [];
     
     // Example milestone detection based on common goals
     if (ctx.userGoal?.toLowerCase().includes('search')) {
@@ -46,8 +49,7 @@ export function initializeMilestones(ctx: GraphContext): void {
       'goal_completion'
     );
     
-    logger.debug('Milestones initialized', { milestones: ctx.milestones });
-  }
+  logger.debug('Milestones initialized', { milestones: ctx.milestones });
 }
 
 // Check for milestone completion after each page state update

@@ -1,5 +1,4 @@
 import fs from 'fs';
-import path from 'path';
 import { Action } from './browserExecutor.js';
 import logger from './utils/logger.js';
 
@@ -31,6 +30,53 @@ interface StoredKnowledge {
 const MAX_SEQUENCE_LENGTH = 5;
 const MAX_SEQUENCES_PER_DOMAIN = 8;
 
+export interface PatternStore {
+  load(): unknown;
+  save(payload: StoredKnowledge): void;
+}
+
+class FilePatternStore implements PatternStore {
+  load(): unknown {
+    try {
+      if (!fs.existsSync('data/success-patterns.json')) return null;
+      return JSON.parse(fs.readFileSync('data/success-patterns.json', 'utf8'));
+    } catch (error) {
+      console.error('Error loading success patterns:', error);
+      return null;
+    }
+  }
+
+  save(payload: StoredKnowledge): void {
+    try {
+      fs.mkdirSync('data', { recursive: true });
+      fs.writeFileSync('data/success-patterns.json', JSON.stringify(payload, null, 2));
+    } catch (error) {
+      console.error('Error saving success patterns:', error);
+    }
+  }
+}
+
+export class MemoryPatternStore implements PatternStore {
+  private raw: string | null;
+
+  constructor(initial?: string) {
+    this.raw = initial ?? null;
+  }
+
+  load(): unknown {
+    if (!this.raw) return null;
+    return JSON.parse(this.raw);
+  }
+
+  save(payload: StoredKnowledge): void {
+    this.raw = JSON.stringify(payload);
+  }
+
+  snapshot(): string | null {
+    return this.raw;
+  }
+}
+
 /**
  * Cross-session memory of what worked on a domain: individual selectors and
  * short action sequences. One shared instance keeps failure-mode state alive
@@ -40,13 +86,13 @@ export class SuccessPatterns {
   private patterns: SuccessPattern[] = [];
   private sequences: ActionSequence[] = [];
   private currentSequence: { domain: string; steps: SequenceStep[] } | null = null;
-  private filePath: string;
+  private store: PatternStore;
   private isInFrequentFailureMode: boolean = false;
   private failureCount: number = 0;
   private lastFailureTime: number = 0;
 
-  constructor(filePath?: string) {
-    this.filePath = filePath ?? path.join(process.cwd(), 'data', 'success-patterns.json');
+  constructor(store?: PatternStore) {
+    this.store = store ?? new FilePatternStore();
     this.loadPatterns();
   }
 
@@ -55,36 +101,27 @@ export class SuccessPatterns {
   }
 
   private loadPatterns() {
-    try {
-      if (!fs.existsSync(this.filePath)) return;
+    const raw = this.store.load();
+    if (raw == null) return;
 
-      const raw = JSON.parse(fs.readFileSync(this.filePath, 'utf8'));
-      if (Array.isArray(raw)) {
-        this.patterns = raw;
-        this.sequences = [];
-        return;
-      }
-
-      this.patterns = Array.isArray(raw?.patterns) ? raw.patterns : [];
-      this.sequences = Array.isArray(raw?.sequences) ? raw.sequences : [];
-    } catch (error) {
-      console.error('Error loading success patterns:', error);
-      this.patterns = [];
+    if (Array.isArray(raw)) {
+      this.patterns = raw;
       this.sequences = [];
+      return;
+    }
+
+    if (typeof raw === 'object') {
+      const stored = raw as Partial<StoredKnowledge>;
+      this.patterns = Array.isArray(stored.patterns) ? stored.patterns : [];
+      this.sequences = Array.isArray(stored.sequences) ? stored.sequences : [];
     }
   }
 
   public savePatterns() {
-    try {
-      fs.mkdirSync(path.dirname(this.filePath), { recursive: true });
-      const payload: StoredKnowledge = {
-        patterns: this.patterns,
-        sequences: this.sequences,
-      };
-      fs.writeFileSync(this.filePath, JSON.stringify(payload, null, 2));
-    } catch (error) {
-      console.error('Error saving success patterns:', error);
-    }
+    this.store.save({
+      patterns: this.patterns,
+      sequences: this.sequences,
+    });
   }
 
   public recordSuccess(action: Action, domain: string) {
@@ -272,9 +309,9 @@ export class SuccessPatterns {
 
 let sharedPatterns: SuccessPatterns | null = null;
 
-export function getSharedSuccessPatterns(filePath?: string): SuccessPatterns {
+export function getSharedSuccessPatterns(store?: PatternStore): SuccessPatterns {
   if (!sharedPatterns) {
-    sharedPatterns = new SuccessPatterns(filePath);
+    sharedPatterns = new SuccessPatterns(store);
   }
   return sharedPatterns;
 }

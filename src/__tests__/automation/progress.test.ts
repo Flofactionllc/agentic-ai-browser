@@ -3,6 +3,7 @@ import {
   calculateProgressPercentage, 
   isStuck,
   getProgressSummary,
+  formatProgressForPrompt,
   PageState
 } from '../../core/automation/progress.js';
 import { GraphContext } from '../../browserExecutor.js';
@@ -223,6 +224,25 @@ describe('Progress Tracking', () => {
       
       // Assert
       expect(result).toBe('Progress: 0% (0/0 milestones)');
+    });
+  });
+
+  describe('formatProgressForPrompt', () => {
+    test('names the next milestone for the action prompt', () => {
+      const ctx = {
+        milestones: ['reach_search_page', 'enter_search_query'],
+        recognizedMilestones: ['reach_search_page']
+      } as GraphContext;
+
+      const result = formatProgressForPrompt(ctx);
+
+      expect(result).toContain('Progress: 50% (1/2 milestones)');
+      expect(result).toContain('Completed: reach_search_page');
+      expect(result).toContain('Next milestone: enter search query');
+    });
+
+    test('stays quiet before milestones exist', () => {
+      expect(formatProgressForPrompt({} as GraphContext)).toBe('');
     });
   });
 });

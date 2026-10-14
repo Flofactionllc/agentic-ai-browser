@@ -1,9 +1,7 @@
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
 import { afterEach, describe, expect, test } from '@jest/globals';
 import { Action } from '../browserExecutor.js';
 import {
+  MemoryPatternStore,
   SuccessPatterns,
   getSharedSuccessPatterns,
   resetSharedSuccessPatterns,
@@ -18,24 +16,17 @@ function action(partial: Pick<Action, 'type'> & Partial<Action>): Action {
 }
 
 describe('SuccessPatterns', () => {
-  let dir: string;
-
   afterEach(() => {
     resetSharedSuccessPatterns();
-    if (dir && fs.existsSync(dir)) {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
   });
 
-  function createStore(): SuccessPatterns {
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'success-patterns-'));
-    return new SuccessPatterns(path.join(dir, 'success-patterns.json'));
+  function createStore(): { patterns: SuccessPatterns; store: MemoryPatternStore } {
+    const store = new MemoryPatternStore();
+    return { patterns: new SuccessPatterns(store), store };
   }
 
   test('loads the legacy array file and saves patterns with sequences', () => {
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'success-patterns-'));
-    const filePath = path.join(dir, 'success-patterns.json');
-    fs.writeFileSync(filePath, JSON.stringify([
+    const store = new MemoryPatternStore(JSON.stringify([
       {
         actionType: 'click',
         element: '#legacy',
@@ -44,11 +35,10 @@ describe('SuccessPatterns', () => {
         lastSuccess: '2020-01-01T00:00:00.000Z',
       },
     ]));
-
-    const patterns = new SuccessPatterns(filePath);
+    const patterns = new SuccessPatterns(store);
     patterns.recordSuccess(action({ type: 'input', element: '#q', value: 'agents' }), 'example.com');
 
-    const saved = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    const saved = JSON.parse(store.snapshot() || '{}');
     expect(saved.patterns).toEqual(expect.arrayContaining([
       expect.objectContaining({ element: '#legacy', successCount: 4 }),
       expect.objectContaining({ actionType: 'input', element: '#q', successCount: 1 }),
@@ -57,7 +47,7 @@ describe('SuccessPatterns', () => {
   });
 
   test('suggests selectors and replays a successful interaction sequence', () => {
-    const patterns = createStore();
+    const { patterns } = createStore();
 
     patterns.recordSuccess(action({
       type: 'navigate',
@@ -79,9 +69,8 @@ describe('SuccessPatterns', () => {
   });
 
   test('hides navigation tips after repeated failures and keeps the failure mode on one instance', () => {
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'success-patterns-'));
-    const filePath = path.join(dir, 'success-patterns.json');
-    const first = getSharedSuccessPatterns(filePath);
+    const store = new MemoryPatternStore();
+    const first = getSharedSuccessPatterns(store);
 
     first.recordSuccess(action({
       type: 'navigate',
@@ -105,7 +94,7 @@ describe('SuccessPatterns', () => {
   });
 
   test('does not remember a homepage refresh as a reusable pattern', () => {
-    const patterns = createStore();
+    const { patterns } = createStore();
     patterns.recordSuccess(action({
       type: 'navigate',
       value: 'https://example.com/',

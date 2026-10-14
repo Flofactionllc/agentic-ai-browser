@@ -126,7 +126,7 @@ async function processUserFunctionCall(ctx: GraphContext, functionCall: string):
     
     // Reinitialize milestones for the new goal
     const { initializeMilestones } = await import('./core/automation/milestones.js');
-    initializeMilestones(ctx);
+    initializeMilestones(ctx, true);
     
     ctx.actionFeedback = `👤 FUNCTION ACTIVATED: ${functionCall} has been processed and goal updated.`;
   } else {
@@ -224,7 +224,7 @@ Enter a function call like ::functionName("arg1") or new instructions:`;
         ctx.history.push(`User updated goal to: ${newGoal}`);
         // Use the extracted initializeMilestones function from the milestones module
         const { initializeMilestones } = await import('./core/automation/milestones.js');
-        initializeMilestones(ctx);
+        initializeMilestones(ctx, true);
       }
 
       logger.info("Received human response", {
