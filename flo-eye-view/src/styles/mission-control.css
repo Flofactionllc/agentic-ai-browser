@@ -193,6 +193,57 @@ body {
   line-height: 1.4;
 }
 
+.storm-panel {
+  margin-top: 1rem;
+  border-top: 1px solid var(--line);
+  padding-top: 0.85rem;
+}
+.storm-panel h3 {
+  margin: 0 0 0.55rem;
+  font-family: var(--font-display);
+  font-size: 0.98rem;
+}
+.storm-card {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.55rem 0.6rem;
+  margin-bottom: 0.45rem;
+  background: rgba(232, 93, 76, 0.08);
+}
+.storm-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+}
+.storm-meta {
+  margin-top: 0.2rem;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+.storm-actions {
+  display: flex;
+  gap: 0.45rem;
+  align-items: center;
+  margin-top: 0.45rem;
+}
+.storm-actions button,
+.storm-actions a {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 0.28rem 0.65rem;
+  font: inherit;
+  font-size: 0.72rem;
+  text-decoration: none;
+  cursor: pointer;
+}
+.storm-actions button:hover,
+.storm-actions a:hover {
+  border-color: var(--division-accent);
+}
+
 .cam-panel {
   margin-top: 1rem;
   border-top: 1px solid var(--line);

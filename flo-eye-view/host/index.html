@@ -43,25 +43,29 @@
         </section>
 
         <section class="ems-panel" data-panel="brief" hidden>
-          <h1>Incident Brief</h1>
-          <p>Placeholder brief board for the emergency-management suite. Live geography stays in Flo Eye View — this pane holds narrative, objectives, and approvals.</p>
-          <ul>
-            <li>Watch: Atlantic / Gulf / Caribbean via Storm Ops</li>
-            <li>Stage: MARC hubs on Deployment Map</li>
-            <li>Assess: NASA GIBS before/after on Damage Assessment</li>
-            <li>Field: Florida corridor cameras on Field View</li>
-          </ul>
+          <div class="ems-panel-head">
+            <h1>Incident Brief</h1>
+            <button type="button" class="ems-refresh" data-refresh-brief>Refresh</button>
+          </div>
+          <p class="ems-lede" data-brief-lede>Loading live NHC / fire / MARC posture…</p>
+          <div class="ems-kpis" data-brief-kpis></div>
+          <h2>Active storms</h2>
+          <div data-brief-storms></div>
+          <h2>Objectives</h2>
+          <ul data-brief-objectives></ul>
+          <p class="ems-footnote">Live geography stays in Flo Eye View. Open Storm Ops / Deployment from the rail to act.</p>
         </section>
 
         <section class="ems-panel" data-panel="roster" hidden>
-          <h1>Response Roster</h1>
-          <p>Crew / contractor roster stub. Pair with Staffing Coverage View inside Flo Eye View for geography.</p>
+          <div class="ems-panel-head">
+            <h1>Response Roster</h1>
+            <button type="button" class="ems-refresh" data-refresh-roster>Refresh</button>
+          </div>
+          <p class="ems-lede">MARC hubs + staffing pins from Flofaction demo geography. Click a row to fly Mission Control home theater (Deployment Map).</p>
           <table>
-            <thead><tr><th>Unit</th><th>Role</th><th>Status</th></tr></thead>
-            <tbody>
-              <tr><td>MARC Orlando Hub</td><td>Staging</td><td>Ready</td></tr>
-              <tr><td>MARC Tampa Bay</td><td>Logistics</td><td>Ready</td></tr>
-              <tr><td>MARC South Florida</td><td>Surge</td><td>Standby</td></tr>
+            <thead><tr><th>Unit</th><th>Role</th><th>Status</th><th></th></tr></thead>
+            <tbody data-roster-body>
+              <tr><td colspan="4">Loading roster…</td></tr>
             </tbody>
           </table>
         </section>

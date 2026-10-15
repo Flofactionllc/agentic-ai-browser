@@ -110,11 +110,19 @@ Pricing and contracts live outside this repo; the code paths are license-clean f
 - **Power Up** local BYOK panel (Cesium ion / FIRMS / TomTom placeholders)
 - **Emergency Management host shell** at `/host/` embedding Mission Control
 
+## v0.3 additions
+
+- **FIRMS / Thermal** layer — keyless NASA GIBS VIIRS anomalies + optional FIRMS CSV points
+- **FL Traffic** simulated corridor congestion (TomTom BYOK hook reserved)
+- Storm Ops **active storm cards** with fly-to + NHC advisory links
+- EMS host **live Incident Brief** (`/api/brief`) and **Response Roster** (`/api/roster`)
+
 ## Out of scope for current milestone
 
 - Voice control / OpenAI Realtime
 - Google Photorealistic 3D (BYOK later)
 - Live FL511 still redistribution (needs operator agreement)
+- Live TomTom vector tiles (key accepted; wiring next)
 - TeleGeography cables / Nepal flood scene (NC — never ship)
 - Public internet deploy / production keys
 

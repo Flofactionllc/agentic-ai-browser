@@ -15,7 +15,7 @@ export const DIVISIONS = [
         id: 'world-picture',
         name: 'World Picture',
         description: 'Cross-division situational awareness over Florida and beyond.',
-        layers: ['cyclones', 'radar', 'fires', 'earthquakes', 'marc', 'staffing'],
+        layers: ['cyclones', 'radar', 'fires', 'firms', 'earthquakes', 'marc', 'staffing', 'traffic'],
       },
       {
         id: 'executive-brief',
@@ -49,7 +49,7 @@ export const DIVISIONS = [
         id: 'deployment-map',
         name: 'Deployment Map',
         description: 'MARC sites, staging yards, and response routes.',
-        layers: ['marc', 'cyclones', 'radar'],
+        layers: ['marc', 'cyclones', 'radar', 'traffic'],
       },
       {
         id: 'damage-assessment',
@@ -60,14 +60,14 @@ export const DIVISIONS = [
       {
         id: 'fire-watch',
         name: 'Fire Watch',
-        description: 'NIFC wildfire perimeters and incident context.',
-        layers: ['fires'],
+        description: 'NIFC perimeters + VIIRS/FIRMS hotspots.',
+        layers: ['fires', 'firms'],
       },
       {
         id: 'field-view',
         name: 'Field View',
         description: 'Florida corridor cameras + traffic context.',
-        layers: ['cameras', 'marc', 'radar'],
+        layers: ['cameras', 'traffic', 'marc', 'radar'],
       },
     ],
   },
@@ -176,12 +176,14 @@ export const LAYER_META = {
   radar: { id: 'radar', label: 'NOAA Radar', credit: 'NOAA nowCOAST' },
   cyclones: { id: 'cyclones', label: 'NHC Tracks + Cones', credit: 'NOAA/NWS NHC' },
   fires: { id: 'fires', label: 'Fire Perimeters', credit: 'NIFC WFIGS' },
+  firms: { id: 'firms', label: 'FIRMS / Thermal', credit: 'NASA GIBS / FIRMS' },
   earthquakes: { id: 'earthquakes', label: 'Earthquakes', credit: 'USGS' },
   imagery: { id: 'imagery', label: 'Satellite Compare', credit: 'NASA GIBS' },
   marc: { id: 'marc', label: 'MARC Sites', credit: 'Flofaction' },
   insurance: { id: 'insurance', label: 'Territories', credit: 'Flofaction' },
   staffing: { id: 'staffing', label: 'Staffing', credit: 'Flofaction' },
   cameras: { id: 'cameras', label: 'FL Cameras', credit: 'Flofaction FL Field View pack' },
+  traffic: { id: 'traffic', label: 'FL Traffic', credit: 'Flofaction corridor sim (TomTom BYOK later)' },
 };
 
 export function getDivision(id) {

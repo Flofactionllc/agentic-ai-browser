@@ -36,6 +36,7 @@ Open:
 - HQ World Picture: http://127.0.0.1:5180/?division=hq&screen=world-picture
 - Insurance Exposure: http://127.0.0.1:5180/?division=insurance&screen=storm-exposure
 - **Emergency Management host shell (embeds Flo Eye View):** http://127.0.0.1:5180/host/
+- Fire Watch (perimeters + thermal): http://127.0.0.1:5180/?division=emergency&screen=fire-watch
 
 ## Division → screens
 

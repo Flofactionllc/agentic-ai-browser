@@ -11,9 +11,10 @@ import {
 /**
  * NOAA NHC active storms + forecast cone/track via Flo Eye View proxy.
  */
-export function createCyclonesLayer(viewer, apiBase = '') {
+export function createCyclonesLayer(viewer, apiBase = '', { onStorms } = {}) {
   const entities = [];
   let pollTimer = null;
+  let latestStorms = [];
 
   async function refresh() {
     clearEntities();
@@ -22,13 +23,17 @@ export function createCyclonesLayer(viewer, apiBase = '') {
       if (!res.ok) throw new Error(`cyclones ${res.status}`);
       const data = await res.json();
       const storms = normalizeStorms(data);
+      latestStorms = storms;
       for (const storm of storms) {
         plotStorm(storm);
         await plotGeometry(storm);
       }
+      onStorms?.(storms);
       viewer.scene.requestRender();
     } catch (err) {
       console.warn('[flo-eye] cyclones layer:', err.message);
+      latestStorms = [];
+      onStorms?.([]);
     }
   }
 
@@ -168,7 +173,11 @@ export function createCyclonesLayer(viewer, apiBase = '') {
           name: s.name ?? s.stormName ?? 'Active storm',
           classification: s.classification ?? s.intensity ?? '',
           intensity: s.intensity,
+          pressure: s.pressure,
+          movementDir: s.movementDir,
+          movementSpeed: s.movementSpeed,
           binNumber: s.binNumber ?? s.bin ?? null,
+          advisoryUrl: s.publicAdvisory?.url || s.forecastAdvisory?.url || null,
           lat,
           lon,
         };
@@ -211,6 +220,16 @@ export function createCyclonesLayer(viewer, apiBase = '') {
   }
 
   return {
+    getStorms: () => latestStorms,
+    flyToStorm(stormId) {
+      const storm = latestStorms.find((s) => s.id === stormId);
+      if (!storm) return false;
+      viewer.camera.flyTo({
+        destination: Cartesian3.fromDegrees(storm.lon, storm.lat, 1_800_000),
+        duration: 1.4,
+      });
+      return true;
+    },
     async enable() {
       await refresh();
       pollTimer = setInterval(refresh, 5 * 60 * 1000);
@@ -219,6 +238,8 @@ export function createCyclonesLayer(viewer, apiBase = '') {
       if (pollTimer) clearInterval(pollTimer);
       pollTimer = null;
       clearEntities();
+      latestStorms = [];
+      onStorms?.([]);
     },
     destroy() {
       this.disable();

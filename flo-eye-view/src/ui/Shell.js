@@ -7,7 +7,14 @@ import {
   loadPowerUp,
 } from './PowerUp.js';
 
-export function renderShell({ divisions, division, screen, layers, selectedCamera = null }) {
+export function renderShell({
+  divisions,
+  division,
+  screen,
+  layers,
+  selectedCamera = null,
+  storms = [],
+}) {
   const settings = loadPowerUp();
   const powered = Boolean(settings.cesiumIonToken || settings.firmsMapKey || settings.tomtomApiKey);
 
@@ -59,6 +66,10 @@ export function renderShell({ divisions, division, screen, layers, selectedCamer
     ? renderCameraPanel(selectedCamera)
     : '';
 
+  const stormPanel = layers.cyclones
+    ? renderStormPanel(storms)
+    : '';
+
   return `
     <div class="mc-root" style="--division-accent:${division.accent}">
       <aside class="brand-rail" data-brand-rail>
@@ -95,6 +106,7 @@ export function renderShell({ divisions, division, screen, layers, selectedCamer
           <h2>Layers</h2>
           <div class="layer-list">${layerChips}</div>
           ${imageryControls}
+          ${stormPanel}
           ${cameraPanel}
           <p class="layer-hint">Screen <strong>${escapeHtml(screen.name)}</strong> presets these layers. Toggle freely.</p>
         </aside>
@@ -108,6 +120,35 @@ export function renderShell({ divisions, division, screen, layers, selectedCamer
       ${renderPowerUpModal(settings)}
     </div>
   `;
+}
+
+function renderStormPanel(storms) {
+  if (!storms?.length) {
+    return `<div class="storm-panel" data-storm-panel>
+      <h3>Active storms</h3>
+      <p class="cam-empty">No active NHC systems right now — radar still live.</p>
+    </div>`;
+  }
+  const cards = storms
+    .map(
+      (s) => `
+      <div class="storm-card">
+        <div class="storm-head">
+          <strong>${escapeHtml(s.name)}</strong>
+          <span>${escapeHtml(s.classification || '')}${s.intensity ? ` · ${escapeHtml(String(s.intensity))}kt` : ''}</span>
+        </div>
+        <div class="storm-meta">${escapeHtml(s.binNumber || '')}${s.pressure ? ` · ${escapeHtml(String(s.pressure))} mb` : ''}</div>
+        <div class="storm-actions">
+          <button type="button" data-fly-storm="${escapeHtml(s.id)}">Fly to</button>
+          ${s.advisoryUrl ? `<a href="${escapeHtml(s.advisoryUrl)}" target="_blank" rel="noopener noreferrer">Advisory</a>` : ''}
+        </div>
+      </div>`,
+    )
+    .join('');
+  return `<div class="storm-panel" data-storm-panel>
+    <h3>Active storms</h3>
+    ${cards}
+  </div>`;
 }
 
 function renderCameraPanel(selectedCamera) {
@@ -160,6 +201,9 @@ export function bindShell(root, handlers) {
   });
   root.querySelectorAll('[data-camera]').forEach((btn) => {
     btn.onclick = () => handlers.onCameraSelect?.(btn.getAttribute('data-camera'));
+  });
+  root.querySelectorAll('[data-fly-storm]').forEach((btn) => {
+    btn.onclick = () => handlers.onFlyStorm?.(btn.getAttribute('data-fly-storm'));
   });
   bindPowerUp(root, { onSave: handlers.onPowerSave });
 }

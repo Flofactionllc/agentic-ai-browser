@@ -20,6 +20,7 @@ export class MissionControl {
       screenId: options.screenId ?? 'storm-ops',
       layers: {},
       selectedCamera: null,
+      storms: [],
     };
     this.viewer = null;
     this.layers = null;
@@ -35,13 +36,7 @@ export class MissionControl {
     this.state.screenId = screen.id;
     this.state.layers = layersFromScreen(screen);
 
-    this.root.innerHTML = renderShell({
-      divisions: DIVISIONS,
-      division,
-      screen,
-      layers: this.state.layers,
-      selectedCamera: this.state.selectedCamera,
-    });
+    this.root.innerHTML = renderShell(this._shellProps(division, screen));
 
     const globeEl = this.root.querySelector('[data-globe]');
     this.viewer = await createViewer(globeEl, {
@@ -51,12 +46,24 @@ export class MissionControl {
     this.layers = new LayerManager(this.viewer, {
       apiBase: this.apiBase,
       onCameraSelect: (cam) => this.setSelectedCamera(cam),
+      onStorms: (storms) => this.setStorms(storms),
     });
     await this.layers.setLayers(this.state.layers);
     this._bindChrome();
     this._bindEmbedApi();
     this._syncUrl();
     this._notifyParent();
+  }
+
+  _shellProps(division, screen) {
+    return {
+      divisions: DIVISIONS,
+      division,
+      screen,
+      layers: this.state.layers,
+      selectedCamera: this.state.selectedCamera,
+      storms: this.state.storms,
+    };
   }
 
   async setDivision(divisionId) {
@@ -81,8 +88,17 @@ export class MissionControl {
   async toggleLayer(id, on) {
     this.state.layers = { ...this.state.layers, [id]: on };
     if (id === 'cameras' && !on) this.state.selectedCamera = null;
+    if (id === 'cyclones' && !on) this.state.storms = [];
     await this.layers.setLayers(this.state.layers);
     this._rerenderChrome();
+  }
+
+  setStorms(storms) {
+    const next = storms || [];
+    const prevKey = JSON.stringify(this.state.storms.map((s) => s.id + s.intensity));
+    const nextKey = JSON.stringify(next.map((s) => s.id + s.intensity));
+    this.state.storms = next;
+    if (prevKey !== nextKey) this._rerenderChrome();
   }
 
   setSelectedCamera(camOrId) {
@@ -100,6 +116,10 @@ export class MissionControl {
     this._rerenderChrome();
   }
 
+  flyToStorm(id) {
+    this.layers?.layers?.cyclones?.flyToStorm?.(id);
+  }
+
   _bindChrome() {
     bindShell(this.root, {
       onDivision: (id) => this.setDivision(id),
@@ -108,6 +128,7 @@ export class MissionControl {
       onHome: () => flyHome(this.viewer, FLORIDA_HOME),
       onImageryMode: (mode) => this.layers?.layers?.imagery?.setMode?.(mode),
       onCameraSelect: (id) => this.setSelectedCamera(id),
+      onFlyStorm: (id) => this.flyToStorm(id),
       onPowerSave: (settings) => {
         if (settings.cesiumIonToken) {
           Ion.defaultAccessToken = settings.cesiumIonToken;
@@ -121,13 +142,7 @@ export class MissionControl {
     const division = getDivision(this.state.divisionId);
     const screen = getScreen(division, this.state.screenId);
     const globeEl = this.root.querySelector('[data-globe]');
-    const html = renderShell({
-      divisions: DIVISIONS,
-      division,
-      screen,
-      layers: this.state.layers,
-      selectedCamera: this.state.selectedCamera,
-    });
+    const html = renderShell(this._shellProps(division, screen));
     const tmp = document.createElement('div');
     tmp.innerHTML = html;
     for (const sel of [
@@ -165,6 +180,7 @@ export class MissionControl {
           type: 'flo-eye/state',
           divisionId: this.state.divisionId,
           screenId: this.state.screenId,
+          stormCount: this.state.storms.length,
         },
         '*',
       );
@@ -178,6 +194,7 @@ export class MissionControl {
       setDivision: (id) => this.setDivision(id),
       setScreen: (id) => this.setScreen(id),
       flyHome: () => flyHome(this.viewer, FLORIDA_HOME),
+      flyToStorm: (id) => this.flyToStorm(id),
       getState: () => ({ ...this.state }),
       selectCamera: (id) => this.setSelectedCamera(id),
     };
@@ -187,6 +204,7 @@ export class MissionControl {
       if (msg.type === 'flo-eye/set-division') this.setDivision(msg.divisionId);
       if (msg.type === 'flo-eye/set-screen') this.setScreen(msg.screenId);
       if (msg.type === 'flo-eye/fly-home') flyHome(this.viewer, FLORIDA_HOME);
+      if (msg.type === 'flo-eye/fly-storm') this.flyToStorm(msg.stormId);
       if (msg.type === 'flo-eye/select-camera') this.setSelectedCamera(msg.cameraId);
     });
   }

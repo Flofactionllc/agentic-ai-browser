@@ -56,8 +56,9 @@ app.get('/api/health', (_req, res) => {
   res.json({
     ok: true,
     product: 'flo-eye-view',
-    version: '0.2.0',
+    version: '0.3.0',
     firmsConfigured: Boolean(process.env.FIRMS_MAP_KEY),
+    tomtomConfigured: Boolean(process.env.TOMTOM_API_KEY),
   });
 });
 
@@ -113,48 +114,208 @@ app.get('/api/fire-perimeters', async (_req, res) => {
   }
 });
 
-/** Optional FIRMS hotspots — only when FIRMS_MAP_KEY is in the environment. */
+/**
+ * Optional FIRMS CSV hotspots — requires FIRMS_MAP_KEY.
+ * Without a key, clients should use the keyless GIBS thermal imagery layer.
+ * ?format=geojson returns FeatureCollection (florida-ish bbox filtered).
+ */
 app.get('/api/firms', async (req, res) => {
   const key = process.env.FIRMS_MAP_KEY;
   if (!key) {
     return res.status(501).json({
       error: 'FIRMS_MAP_KEY not configured',
-      hint: 'Add FIRMS_MAP_KEY to flo-eye-view/.env (local only)',
+      hint: 'Add FIRMS_MAP_KEY to flo-eye-view/.env (local only). Keyless NASA GIBS thermal still works in the firms layer.',
     });
   }
   try {
     const source = String(req.query.source || 'VIIRS_SNPP_NRT');
-    const data = await cached(`firms-${source}`, 30 * 60 * 1000, async () => {
-      const url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${key}/${source}/world/1`;
+    const csv = await cached(`firms-${source}`, 30 * 60 * 1000, async () => {
+      // Florida / SE US bbox for ops focus (west,south,east,north)
+      const url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${key}/${source}/-90,23,-75,33/1`;
       const r = await fetch(url, { headers: UA });
       if (!r.ok) throw new Error(`FIRMS ${r.status}`);
       return r.text();
     });
-    res.type('text/csv').send(data);
+    if (String(req.query.format || '') === 'geojson') {
+      return res.json(firmsCsvToGeoJson(csv));
+    }
+    res.type('text/csv').send(csv);
   } catch (err) {
     res.status(502).json({ error: String(err.message || err) });
   }
 });
 
+function firmsCsvToGeoJson(csv) {
+  const lines = String(csv).trim().split(/\r?\n/);
+  if (lines.length < 2) return { type: 'FeatureCollection', features: [] };
+  const headers = lines[0].split(',').map((h) => h.trim().toLowerCase());
+  const latIdx = headers.indexOf('latitude');
+  const lonIdx = headers.indexOf('longitude');
+  const brightIdx = headers.findIndex((h) => h.includes('bright'));
+  const frpIdx = headers.indexOf('frp');
+  const features = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cols = lines[i].split(',');
+    const lat = Number(cols[latIdx]);
+    const lon = Number(cols[lonIdx]);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+    features.push({
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: [lon, lat] },
+      properties: {
+        brightness: brightIdx >= 0 ? Number(cols[brightIdx]) : null,
+        frp: frpIdx >= 0 ? Number(cols[frpIdx]) : null,
+      },
+    });
+  }
+  return { type: 'FeatureCollection', features };
+}
+
 app.get('/api/cameras', (_req, res) => {
   try {
-    const file = path.join(__dirname, '../src/data/floridaCameras.js');
-    // Serve a JSON snapshot without importing ESM from CJS context
-    const modPath = path.join(__dirname, '../src/data/floridaCameras.json');
-    if (existsSync(modPath)) {
-      return res.json(JSON.parse(readFileSync(modPath, 'utf8')));
-    }
-    // Fallback: parse exported array from the JS module text (dev convenience)
-    const text = readFileSync(file, 'utf8');
-    const match = text.match(/export const FLORIDA_CAMERAS = (\[[\s\S]*?\]);/);
-    if (!match) throw new Error('camera catalog missing');
-    // eslint-disable-next-line no-new-func
-    const cams = Function(`return (${match[1]})`)();
+    const cams = readExportArray('../src/data/floridaCameras.js', 'FLORIDA_CAMERAS');
     res.json({ cameras: cams, source: 'Flofaction curated FL corridor pack' });
   } catch (err) {
     res.status(500).json({ error: String(err.message || err) });
   }
 });
+
+app.get('/api/traffic', (_req, res) => {
+  try {
+    const corridors = readExportArray('../src/data/floridaTraffic.js', 'FLORIDA_CORRIDORS');
+    const hour = new Date().getUTCHours();
+    const segments = corridors.map((c, i) => {
+      const seed = (hour * 17 + i * 13) % 100;
+      let level = 'free';
+      if (seed > 85) level = 'severe';
+      else if (seed > 65) level = 'heavy';
+      else if (seed > 40) level = 'moderate';
+      const speedIndex = Math.max(0.2, 1 - seed / 120);
+      return {
+        id: c.id,
+        name: c.name,
+        roadway: c.roadway,
+        coords: c.coords,
+        level,
+        speedIndex: Number(speedIndex.toFixed(2)),
+      };
+    });
+    res.json({
+      mode: process.env.TOMTOM_API_KEY ? 'tomtom-pending' : 'simulated',
+      updatedAt: new Date().toISOString(),
+      segments,
+      note: process.env.TOMTOM_API_KEY
+        ? 'TomTom key present — live tiles not wired yet; serving simulated corridors'
+        : 'Simulated FL corridor congestion for Field View / Deployment',
+    });
+  } catch (err) {
+    res.status(500).json({ error: String(err.message || err) });
+  }
+});
+
+app.get('/api/brief', async (_req, res) => {
+  try {
+    const brief = await cached('ems-brief', 60 * 1000, async () => {
+      let storms = [];
+      try {
+        const r = await fetch('https://www.nhc.noaa.gov/CurrentStorms.json', { headers: UA });
+        if (r.ok) {
+          const data = await r.json();
+          storms = (data.activeStorms || []).map((s) => ({
+            id: s.id,
+            name: s.name,
+            classification: s.classification,
+            intensity: s.intensity,
+            binNumber: s.binNumber,
+            lat: s.latitudeNumeric,
+            lon: s.longitudeNumeric,
+            advisoryUrl: s.publicAdvisory?.url || null,
+            lastUpdate: s.lastUpdate,
+          }));
+        }
+      } catch {
+        // keep empty
+      }
+
+      let fireCount = null;
+      try {
+        const r = await fetch(
+          'https://services3.arcgis.com/T4QMspbfLg3qTGWY/arcgis/rest/services/WFIGS_Interagency_Perimeters_Current/FeatureServer/0/query?where=1%3D1&returnCountOnly=true&f=json',
+          { headers: UA },
+        );
+        if (r.ok) {
+          const data = await r.json();
+          fireCount = data.count ?? null;
+        }
+      } catch {
+        // keep null
+      }
+
+      const marc = readExportArray('../src/config/florida.js', 'MARC_SITES');
+      return {
+        theater: 'Florida',
+        generatedAt: new Date().toISOString(),
+        storms,
+        firePerimeterCount: fireCount,
+        marcReady: marc.filter((m) => m.kind === 'hub' || m.kind === 'command').length,
+        marcStaging: marc.filter((m) => m.kind === 'staging').length,
+        objectives: [
+          'Monitor NHC wallets on Storm Ops',
+          'Keep MARC hubs green on Deployment Map',
+          'Use Damage Assessment GIBS before/after after landfall',
+          'Field View corridors for evacuation / surge routes',
+        ],
+      };
+    });
+    res.json(brief);
+  } catch (err) {
+    res.status(500).json({ error: String(err.message || err) });
+  }
+});
+
+app.get('/api/roster', (_req, res) => {
+  try {
+    const marc = readExportArray('../src/config/florida.js', 'MARC_SITES');
+    const staffing = readExportArray('../src/config/florida.js', 'STAFFING_PINS');
+    const units = marc.map((site) => ({
+      id: site.id,
+      unit: site.name,
+      role: site.kind === 'hub' ? 'Hub / surge' : site.kind === 'command' ? 'Command' : 'Staging / logistics',
+      status: site.kind === 'staging' ? 'Standby' : 'Ready',
+      lon: site.lon,
+      lat: site.lat,
+      kind: site.kind,
+    }));
+    const placements = staffing.map((p) => ({
+      id: p.id,
+      unit: p.name,
+      role: 'Staffing coverage',
+      status: `${p.openRoles} open roles`,
+      lon: p.lon,
+      lat: p.lat,
+    }));
+    res.json({
+      updatedAt: new Date().toISOString(),
+      units: [...units, ...placements],
+      note: 'Demo roster bound to Flofaction MARC + staffing pins',
+    });
+  } catch (err) {
+    res.status(500).json({ error: String(err.message || err) });
+  }
+});
+
+function readExportArray(relPath, exportName) {
+  const file = path.join(__dirname, relPath);
+  if (existsSync(file.replace(/\.js$/, '.json'))) {
+    const raw = JSON.parse(readFileSync(file.replace(/\.js$/, '.json'), 'utf8'));
+    return raw[exportName] || raw.cameras || raw;
+  }
+  const text = readFileSync(file, 'utf8');
+  const match = text.match(new RegExp(`export const ${exportName} = (\\[[\\s\\S]*?\\]);`));
+  if (!match) throw new Error(`${exportName} missing in ${relPath}`);
+  // eslint-disable-next-line no-new-func
+  return Function(`return (${match[1]})`)();
+}
 
 app.listen(PORT, HOST, () => {
   console.log(`Flo Eye View API on http://${HOST}:${PORT}`);

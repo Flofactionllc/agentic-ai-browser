@@ -9,24 +9,28 @@ import { createMarcLayer } from './marc.js';
 import { createInsuranceLayer } from './insurance.js';
 import { createStaffingLayer } from './staffing.js';
 import { createCamerasLayer } from './cameras.js';
+import { createFirmsLayer } from './firms.js';
+import { createTrafficLayer } from './traffic.js';
 
 /**
  * Owns enable/disable for all Flo Eye View layers and attribution credits.
  */
 export class LayerManager {
-  constructor(viewer, { apiBase = '', onCameraSelect } = {}) {
+  constructor(viewer, { apiBase = '', onCameraSelect, onStorms } = {}) {
     this.viewer = viewer;
     this.apiBase = apiBase;
     this.layers = {
       radar: createRadarLayer(viewer),
-      cyclones: createCyclonesLayer(viewer, apiBase),
+      cyclones: createCyclonesLayer(viewer, apiBase, { onStorms }),
       fires: createFiresLayer(viewer, apiBase),
+      firms: createFirmsLayer(viewer, apiBase),
       earthquakes: createEarthquakesLayer(viewer),
       imagery: createImageryCompareLayer(viewer),
       marc: createMarcLayer(viewer),
       insurance: createInsuranceLayer(viewer),
       staffing: createStaffingLayer(viewer),
       cameras: createCamerasLayer(viewer, { onSelect: onCameraSelect }),
+      traffic: createTrafficLayer(viewer, apiBase),
     };
     this.state = Object.fromEntries(Object.keys(this.layers).map((k) => [k, false]));
     this._credits = new Map();
