@@ -8,12 +8,13 @@ import { createImageryCompareLayer } from './imageryCompare.js';
 import { createMarcLayer } from './marc.js';
 import { createInsuranceLayer } from './insurance.js';
 import { createStaffingLayer } from './staffing.js';
+import { createCamerasLayer } from './cameras.js';
 
 /**
  * Owns enable/disable for all Flo Eye View layers and attribution credits.
  */
 export class LayerManager {
-  constructor(viewer, { apiBase = '' } = {}) {
+  constructor(viewer, { apiBase = '', onCameraSelect } = {}) {
     this.viewer = viewer;
     this.apiBase = apiBase;
     this.layers = {
@@ -25,6 +26,7 @@ export class LayerManager {
       marc: createMarcLayer(viewer),
       insurance: createInsuranceLayer(viewer),
       staffing: createStaffingLayer(viewer),
+      cameras: createCamerasLayer(viewer, { onSelect: onCameraSelect }),
     };
     this.state = Object.fromEntries(Object.keys(this.layers).map((k) => [k, false]));
     this._credits = new Map();
@@ -45,6 +47,10 @@ export class LayerManager {
       }
     }
     this.viewer.scene.requestRender();
+  }
+
+  selectCamera(id) {
+    this.layers.cameras?.select?.(id);
   }
 
   getActiveCredits() {
@@ -70,7 +76,6 @@ export class LayerManager {
   }
 
   _removeCredit(id) {
-    // Cesium CreditDisplay has limited remove API across versions; credits stay for session.
     this._credits.delete(id);
   }
 }

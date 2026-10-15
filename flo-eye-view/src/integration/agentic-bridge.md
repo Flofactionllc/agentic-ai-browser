@@ -26,9 +26,21 @@ window.FloEyeView.setScreen('story-scout');
 window.FloEyeView.getState();
 ```
 
+## Emergency Management host
+
+Open the Flofaction EMS shell that embeds Mission Control:
+
+```
+http://127.0.0.1:5180/host/
+```
+
+Host buttons postMessage `flo-eye/set-division` + `flo-eye/set-screen` into the iframe.
+
 ## Suggested automation milestones
 
-1. Navigate to Storm Ops, assert NHC credit visible.
+1. Navigate to Storm Ops, assert NHC credit visible (cones via `/api/cyclones/geometry`).
 2. Switch to Deployment Map, count MARC site labels.
-3. Switch Insurance → Claims View, toggle imagery Before/After.
-4. HQ World Picture enables multi-layer state.
+3. Switch Field View, select a FL camera, assert LIVE SLOT card.
+4. Switch Insurance → Claims View, toggle imagery Before/After.
+5. HQ World Picture enables multi-layer state.
+6. Open `/host/`, click Deployment then Field View, assert iframe follows.

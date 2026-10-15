@@ -32,8 +32,10 @@ npm run dev      # terminal B — http://127.0.0.1:5180
 Open:
 
 - Emergency Storm Ops: http://127.0.0.1:5180/?division=emergency&screen=storm-ops
+- Field View (FL cameras): http://127.0.0.1:5180/?division=emergency&screen=field-view
 - HQ World Picture: http://127.0.0.1:5180/?division=hq&screen=world-picture
 - Insurance Exposure: http://127.0.0.1:5180/?division=insurance&screen=storm-exposure
+- **Emergency Management host shell (embeds Flo Eye View):** http://127.0.0.1:5180/host/
 
 ## Division → screens
 

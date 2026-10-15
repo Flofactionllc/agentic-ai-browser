@@ -66,8 +66,8 @@ export const DIVISIONS = [
       {
         id: 'field-view',
         name: 'Field View',
-        description: 'Cameras + traffic slots (Florida packs next).',
-        layers: ['marc', 'radar'],
+        description: 'Florida corridor cameras + traffic context.',
+        layers: ['cameras', 'marc', 'radar'],
       },
     ],
   },
@@ -174,13 +174,14 @@ export const DIVISIONS = [
 
 export const LAYER_META = {
   radar: { id: 'radar', label: 'NOAA Radar', credit: 'NOAA nowCOAST' },
-  cyclones: { id: 'cyclones', label: 'NHC Tracks', credit: 'NOAA/NWS NHC' },
+  cyclones: { id: 'cyclones', label: 'NHC Tracks + Cones', credit: 'NOAA/NWS NHC' },
   fires: { id: 'fires', label: 'Fire Perimeters', credit: 'NIFC WFIGS' },
   earthquakes: { id: 'earthquakes', label: 'Earthquakes', credit: 'USGS' },
   imagery: { id: 'imagery', label: 'Satellite Compare', credit: 'NASA GIBS' },
   marc: { id: 'marc', label: 'MARC Sites', credit: 'Flofaction' },
   insurance: { id: 'insurance', label: 'Territories', credit: 'Flofaction' },
   staffing: { id: 'staffing', label: 'Staffing', credit: 'Flofaction' },
+  cameras: { id: 'cameras', label: 'FL Cameras', credit: 'Flofaction FL Field View pack' },
 };
 
 export function getDivision(id) {

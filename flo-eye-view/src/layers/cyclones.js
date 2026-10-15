@@ -9,7 +9,7 @@ import {
 } from 'cesium';
 
 /**
- * NOAA NHC active storms via Flo Eye View proxy (Vite → :5181).
+ * NOAA NHC active storms + forecast cone/track via Flo Eye View proxy.
  */
 export function createCyclonesLayer(viewer, apiBase = '') {
   const entities = [];
@@ -18,15 +18,128 @@ export function createCyclonesLayer(viewer, apiBase = '') {
   async function refresh() {
     clearEntities();
     try {
-      const url = `${apiBase}/api/cyclones`;
-      const res = await fetch(url);
+      const res = await fetch(`${apiBase}/api/cyclones`);
       if (!res.ok) throw new Error(`cyclones ${res.status}`);
       const data = await res.json();
       const storms = normalizeStorms(data);
-      for (const storm of storms) plotStorm(storm);
+      for (const storm of storms) {
+        plotStorm(storm);
+        await plotGeometry(storm);
+      }
       viewer.scene.requestRender();
     } catch (err) {
       console.warn('[flo-eye] cyclones layer:', err.message);
+    }
+  }
+
+  async function plotGeometry(storm) {
+    if (!storm.binNumber) return;
+    try {
+      const res = await fetch(
+        `${apiBase}/api/cyclones/geometry?bin=${encodeURIComponent(storm.binNumber)}`,
+      );
+      if (!res.ok) return;
+      const geo = await res.json();
+      if (geo.cone) drawPolygonCollection(geo.cone, storm, 'cone');
+      if (geo.track) drawLineCollection(geo.track, storm, 'track');
+      if (geo.points) drawForecastPoints(geo.points, storm);
+    } catch (err) {
+      console.warn('[flo-eye] cyclone geometry:', err.message);
+    }
+  }
+
+  function drawPolygonCollection(fc, storm, kind) {
+    for (const feature of fc.features ?? []) {
+      const geom = feature.geometry;
+      if (!geom) continue;
+      const rings =
+        geom.type === 'Polygon'
+          ? [geom.coordinates[0]]
+          : geom.type === 'MultiPolygon'
+            ? geom.coordinates.map((p) => p[0])
+            : [];
+      for (const ring of rings) {
+        const flat = [];
+        for (const pt of ring) {
+          const lon = Number(pt[0]);
+          const lat = Number(pt[1]);
+          if (Number.isFinite(lon) && Number.isFinite(lat)) flat.push(lon, lat);
+        }
+        if (flat.length < 6) continue;
+        entities.push(
+          viewer.entities.add({
+            id: `cyclone-${kind}-${storm.id}-${entities.length}`,
+            name: `${storm.name} forecast cone`,
+            polygon: {
+              hierarchy: Cartesian3.fromDegreesArray(flat),
+              material: Color.fromCssColorString('#ff6b4a').withAlpha(0.22),
+              outline: true,
+              outlineColor: Color.fromCssColorString('#ffb4a8'),
+            },
+          }),
+        );
+      }
+    }
+  }
+
+  function drawLineCollection(fc, storm, kind) {
+    for (const feature of fc.features ?? []) {
+      const geom = feature.geometry;
+      if (!geom || geom.type !== 'LineString') continue;
+      const positions = [];
+      for (const pt of geom.coordinates) {
+        const lon = Number(pt[0]);
+        const lat = Number(pt[1]);
+        if (Number.isFinite(lon) && Number.isFinite(lat)) {
+          positions.push(Cartesian3.fromDegrees(lon, lat));
+        }
+      }
+      if (positions.length < 2) continue;
+      entities.push(
+        viewer.entities.add({
+          id: `cyclone-${kind}-${storm.id}-${entities.length}`,
+          polyline: {
+            positions,
+            width: 3,
+            material: Color.fromCssColorString('#ffd166').withAlpha(0.95),
+          },
+        }),
+      );
+    }
+  }
+
+  function drawForecastPoints(fc, storm) {
+    for (const feature of fc.features ?? []) {
+      const coords = feature.geometry?.coordinates;
+      if (!coords) continue;
+      const [lon, lat] = coords;
+      if (!Number.isFinite(lon) || !Number.isFinite(lat)) continue;
+      const props = feature.properties ?? {};
+      const wind = props.maxwind ?? props.MAXWIND;
+      const label = wind ? `${wind}kt` : props.dvlbl || '';
+      entities.push(
+        viewer.entities.add({
+          position: Cartesian3.fromDegrees(lon, lat),
+          point: {
+            pixelSize: 7,
+            color: Color.fromCssColorString('#ffd166'),
+            outlineColor: Color.BLACK,
+            outlineWidth: 1,
+          },
+          label: {
+            text: String(label),
+            font: '11px "IBM Plex Sans", sans-serif',
+            fillColor: Color.WHITE,
+            outlineColor: Color.BLACK,
+            outlineWidth: 2,
+            style: LabelStyle.FILL_AND_OUTLINE,
+            pixelOffset: new Cartesian2(0, -14),
+            show: Boolean(label),
+            disableDepthTestDistance: Number.POSITIVE_INFINITY,
+          },
+          description: `<p><b>${storm.name}</b> forecast point</p><p>${props.advdate || ''}</p>`,
+        }),
+      );
     }
   }
 
@@ -53,10 +166,11 @@ export function createCyclonesLayer(viewer, apiBase = '') {
         return {
           id: s.id ?? s.stormID ?? `${s.name}-${lat}`,
           name: s.name ?? s.stormName ?? 'Active storm',
-          classification: s.classification ?? s.intensity ?? s.Status ?? '',
+          classification: s.classification ?? s.intensity ?? '',
+          intensity: s.intensity,
+          binNumber: s.binNumber ?? s.bin ?? null,
           lat,
           lon,
-          track: Array.isArray(s.track) ? s.track : [],
         };
       })
       .filter(Boolean);
@@ -75,7 +189,7 @@ export function createCyclonesLayer(viewer, apiBase = '') {
         heightReference: HeightReference.NONE,
       },
       label: {
-        text: `${storm.name}${storm.classification ? `\n${storm.classification}` : ''}`,
+        text: `${storm.name}${storm.classification ? `\n${storm.classification}` : ''}${storm.intensity ? ` ${storm.intensity}kt` : ''}`,
         font: '14px "IBM Plex Sans", sans-serif',
         fillColor: Color.WHITE,
         outlineColor: Color.BLACK,
@@ -86,32 +200,9 @@ export function createCyclonesLayer(viewer, apiBase = '') {
         pixelOffset: new Cartesian2(0, -18),
         disableDepthTestDistance: Number.POSITIVE_INFINITY,
       },
-      description: `<p><b>${storm.name}</b></p><p>${storm.classification || 'Active tropical system'}</p><p>Source: NOAA/NWS NHC</p>`,
+      description: `<p><b>${storm.name}</b></p><p>${storm.classification || 'Active tropical system'}</p><p>Wallet: ${storm.binNumber || 'n/a'}</p><p>Source: NOAA/NWS NHC</p>`,
     });
     entities.push(e);
-
-    if (storm.track.length > 1) {
-      const positions = storm.track
-        .map((p) => {
-          const lat = parseCoord(p.lat ?? p.latitude, p.latitudeNumeric);
-          const lon = parseCoord(p.lon ?? p.longitude, p.longitudeNumeric);
-          if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
-          return Cartesian3.fromDegrees(lon, lat);
-        })
-        .filter(Boolean);
-      if (positions.length > 1) {
-        entities.push(
-          viewer.entities.add({
-            id: `cyclone-track-${storm.id}`,
-            polyline: {
-              positions,
-              width: 3,
-              material: Color.fromCssColorString('#ff6b4a').withAlpha(0.85),
-            },
-          }),
-        );
-      }
-    }
   }
 
   function clearEntities() {

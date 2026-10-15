@@ -1,5 +1,9 @@
 import { defineConfig } from 'vite';
 import cesium from 'vite-plugin-cesium';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const root = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   plugins: [cesium()],
@@ -20,5 +24,11 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: true,
+    rollupOptions: {
+      input: {
+        main: path.resolve(root, 'index.html'),
+        host: path.resolve(root, 'host/index.html'),
+      },
+    },
   },
 });

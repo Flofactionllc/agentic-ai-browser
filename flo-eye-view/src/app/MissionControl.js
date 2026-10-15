@@ -1,8 +1,11 @@
+import { Ion } from 'cesium';
 import { DIVISIONS, getDivision, getScreen, layersFromScreen } from '../config/divisions.js';
 import { FLORIDA_HOME } from '../config/florida.js';
+import { FLORIDA_CAMERAS } from '../data/floridaCameras.js';
 import { createViewer, flyHome } from '../globe/createViewer.js';
 import { LayerManager } from '../layers/LayerManager.js';
 import { renderShell, bindShell } from '../ui/Shell.js';
+import { loadPowerUp } from '../ui/PowerUp.js';
 
 /**
  * Top-level Flo Eye View controller: division ↔ screen ↔ layers ↔ globe.
@@ -16,12 +19,17 @@ export class MissionControl {
       divisionId: options.divisionId ?? 'emergency',
       screenId: options.screenId ?? 'storm-ops',
       layers: {},
+      selectedCamera: null,
     };
     this.viewer = null;
     this.layers = null;
   }
 
   async start() {
+    const power = loadPowerUp();
+    const ion = this.options.cesiumIonToken || power.cesiumIonToken;
+    if (ion) Ion.defaultAccessToken = ion;
+
     const division = getDivision(this.state.divisionId);
     const screen = getScreen(division, this.state.screenId);
     this.state.screenId = screen.id;
@@ -32,85 +40,115 @@ export class MissionControl {
       division,
       screen,
       layers: this.state.layers,
+      selectedCamera: this.state.selectedCamera,
     });
 
     const globeEl = this.root.querySelector('[data-globe]');
     this.viewer = await createViewer(globeEl, {
       home: FLORIDA_HOME,
-      cesiumIonToken: this.options.cesiumIonToken,
+      cesiumIonToken: ion,
     });
-    this.layers = new LayerManager(this.viewer, { apiBase: this.apiBase });
+    this.layers = new LayerManager(this.viewer, {
+      apiBase: this.apiBase,
+      onCameraSelect: (cam) => this.setSelectedCamera(cam),
+    });
     await this.layers.setLayers(this.state.layers);
-
-    bindShell(this.root, {
-      onDivision: (id) => this.setDivision(id),
-      onScreen: (id) => this.setScreen(id),
-      onLayerToggle: (id, on) => this.toggleLayer(id, on),
-      onHome: () => flyHome(this.viewer, FLORIDA_HOME),
-      onImageryMode: (mode) => this.layers?.layers?.imagery?.setMode?.(mode),
-    });
-
+    this._bindChrome();
     this._bindEmbedApi();
     this._syncUrl();
+    this._notifyParent();
   }
 
   async setDivision(divisionId) {
     const division = getDivision(divisionId);
     this.state.divisionId = division.id;
-    await this.setScreen(division.screens[0].id, { skipDivisionReset: true });
-    this._rerenderChrome();
+    this.state.selectedCamera = null;
+    await this.setScreen(division.screens[0].id);
   }
 
-  async setScreen(screenId, { skipDivisionReset } = {}) {
+  async setScreen(screenId) {
     const division = getDivision(this.state.divisionId);
     const screen = getScreen(division, screenId);
     this.state.screenId = screen.id;
     this.state.layers = layersFromScreen(screen);
+    if (!this.state.layers.cameras) this.state.selectedCamera = null;
     await this.layers.setLayers(this.state.layers);
-    if (!skipDivisionReset) this._rerenderChrome();
-    else this._rerenderChrome();
+    this._rerenderChrome();
     this._syncUrl();
+    this._notifyParent();
   }
 
   async toggleLayer(id, on) {
     this.state.layers = { ...this.state.layers, [id]: on };
+    if (id === 'cameras' && !on) this.state.selectedCamera = null;
     await this.layers.setLayers(this.state.layers);
     this._rerenderChrome();
   }
 
-  _rerenderChrome() {
-    const division = getDivision(this.state.divisionId);
-    const screen = getScreen(division, this.state.screenId);
-    const globeHost = this.root.querySelector('[data-globe-host]');
-    const globeEl = this.root.querySelector('[data-globe]');
-    // Preserve globe canvas: only refresh chrome regions.
-    const html = renderShell({
-      divisions: DIVISIONS,
-      division,
-      screen,
-      layers: this.state.layers,
-    });
-    const tmp = document.createElement('div');
-    tmp.innerHTML = html;
-    for (const sel of ['[data-topbar]', '[data-screens]', '[data-layers]', '[data-status]', '[data-brand-rail]']) {
-      const next = tmp.querySelector(sel);
-      const cur = this.root.querySelector(sel);
-      if (next && cur) cur.replaceWith(next);
+  setSelectedCamera(camOrId) {
+    const cam =
+      typeof camOrId === 'string'
+        ? FLORIDA_CAMERAS.find((c) => c.id === camOrId)
+        : camOrId;
+    if (!cam) return;
+    if (this.state.selectedCamera?.id === cam.id) {
+      this.layers?.selectCamera?.(cam.id);
+      return;
     }
-    // Keep existing globe element
-    const newHost = this.root.querySelector('[data-globe-host]');
-    if (newHost && globeEl && !newHost.contains(globeEl)) {
-      newHost.innerHTML = '';
-      newHost.appendChild(globeEl);
-    }
+    this.state.selectedCamera = cam;
+    this.layers?.selectCamera?.(cam.id);
+    this._rerenderChrome();
+  }
+
+  _bindChrome() {
     bindShell(this.root, {
       onDivision: (id) => this.setDivision(id),
       onScreen: (id) => this.setScreen(id),
       onLayerToggle: (id, on) => this.toggleLayer(id, on),
       onHome: () => flyHome(this.viewer, FLORIDA_HOME),
       onImageryMode: (mode) => this.layers?.layers?.imagery?.setMode?.(mode),
+      onCameraSelect: (id) => this.setSelectedCamera(id),
+      onPowerSave: (settings) => {
+        if (settings.cesiumIonToken) {
+          Ion.defaultAccessToken = settings.cesiumIonToken;
+        }
+        this._rerenderChrome();
+      },
     });
-    void globeHost;
+  }
+
+  _rerenderChrome() {
+    const division = getDivision(this.state.divisionId);
+    const screen = getScreen(division, this.state.screenId);
+    const globeEl = this.root.querySelector('[data-globe]');
+    const html = renderShell({
+      divisions: DIVISIONS,
+      division,
+      screen,
+      layers: this.state.layers,
+      selectedCamera: this.state.selectedCamera,
+    });
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    for (const sel of [
+      '[data-topbar]',
+      '[data-screens]',
+      '[data-layers]',
+      '[data-status]',
+      '[data-brand-rail]',
+      '[data-power-modal]',
+    ]) {
+      const next = tmp.querySelector(sel);
+      const cur = this.root.querySelector(sel);
+      if (next && cur) cur.replaceWith(next);
+      else if (next && !cur) this.root.querySelector('.mc-root')?.appendChild(next);
+    }
+    const newHost = this.root.querySelector('[data-globe-host]');
+    if (newHost && globeEl && !newHost.contains(globeEl)) {
+      newHost.innerHTML = '';
+      newHost.appendChild(globeEl);
+    }
+    this._bindChrome();
   }
 
   _syncUrl() {
@@ -120,12 +158,28 @@ export class MissionControl {
     history.replaceState({}, '', url);
   }
 
+  _notifyParent() {
+    try {
+      window.parent?.postMessage(
+        {
+          type: 'flo-eye/state',
+          divisionId: this.state.divisionId,
+          screenId: this.state.screenId,
+        },
+        '*',
+      );
+    } catch {
+      // ignore
+    }
+  }
+
   _bindEmbedApi() {
     window.FloEyeView = {
       setDivision: (id) => this.setDivision(id),
       setScreen: (id) => this.setScreen(id),
       flyHome: () => flyHome(this.viewer, FLORIDA_HOME),
       getState: () => ({ ...this.state }),
+      selectCamera: (id) => this.setSelectedCamera(id),
     };
     window.addEventListener('message', (ev) => {
       const msg = ev.data;
@@ -133,6 +187,7 @@ export class MissionControl {
       if (msg.type === 'flo-eye/set-division') this.setDivision(msg.divisionId);
       if (msg.type === 'flo-eye/set-screen') this.setScreen(msg.screenId);
       if (msg.type === 'flo-eye/fly-home') flyHome(this.viewer, FLORIDA_HOME);
+      if (msg.type === 'flo-eye/select-camera') this.setSelectedCamera(msg.cameraId);
     });
   }
 

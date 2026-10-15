@@ -103,11 +103,18 @@ The agentic browser can open these URLs as automation targets for “show Storm 
 
 Pricing and contracts live outside this repo; the code paths are license-clean for commercial distribution.
 
-## Out of scope for v1
+## v0.2 additions
+
+- NHC forecast **cones + tracks + points** via MapServer wallet layers
+- **Field View** Florida corridor camera pack (pins + ops metadata; still redistribution gated)
+- **Power Up** local BYOK panel (Cesium ion / FIRMS / TomTom placeholders)
+- **Emergency Management host shell** at `/host/` embedding Mission Control
+
+## Out of scope for current milestone
 
 - Voice control / OpenAI Realtime
 - Google Photorealistic 3D (BYOK later)
-- Full CCTV packs (Florida DOT next sprint)
+- Live FL511 still redistribution (needs operator agreement)
 - TeleGeography cables / Nepal flood scene (NC — never ship)
 - Public internet deploy / production keys
 
