@@ -4,6 +4,7 @@ import readline from 'readline';
 import fs from 'fs';
 import path from 'path';
 import { getSharedSuccessPatterns } from './successPatterns.js';
+import { resetSessionNotes } from './core/sessionNotes.js';
 import { getAgentState } from './utils/agentState.js';
 import logger from './utils/logger.js';
 
@@ -543,6 +544,10 @@ export async function runGraph(): Promise<void> {
     return runGraph();
   }
   
+  // A new goal starts a new notes session. Notes from the previous run
+  // stay on disk, and this run's prompt only sees what it records.
+  resetSessionNotes();
+
   // Process initial goal for function calls
   let processedGoal = userGoal;
   if (isUserFunctionCall(userGoal)) {

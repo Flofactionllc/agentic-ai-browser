@@ -1,6 +1,12 @@
 import { GraphContext } from '../../browserExecutor.js';
 import logger from '../../utils/logger.js';
 
+function goalMentions(goal: string | undefined, phrase: string): boolean {
+  if (!goal) return false;
+  const escaped = phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`\\b${escaped}\\b`, 'i').test(goal);
+}
+
 // Initialize milestones based on the user goal
 export function initializeMilestones(ctx: GraphContext, force = false): void {
   if (!force && ctx.milestones && ctx.milestones.length > 0) {
@@ -10,22 +16,23 @@ export function initializeMilestones(ctx: GraphContext, force = false): void {
   ctx.milestones = [];
   ctx.recognizedMilestones = [];
     
-    // Example milestone detection based on common goals
-    if (ctx.userGoal?.toLowerCase().includes('search')) {
+    // Example milestone detection based on common goals.
+    // Match whole words so "research" is not treated as "search".
+    if (goalMentions(ctx.userGoal, 'search')) {
       ctx.milestones.push(
         'reach_search_page',
         'enter_search_query',
         'submit_search',
         'review_search_results'
       );
-    } else if (ctx.userGoal?.toLowerCase().includes('login') || ctx.userGoal?.toLowerCase().includes('sign in')) {
+    } else if (goalMentions(ctx.userGoal, 'login') || goalMentions(ctx.userGoal, 'sign in')) {
       ctx.milestones.push(
         'reach_login_page',
         'enter_credentials',
         'submit_login',
         'login_successful'
       );
-    } else if (ctx.userGoal?.toLowerCase().includes('purchase') || ctx.userGoal?.toLowerCase().includes('buy')) {
+    } else if (goalMentions(ctx.userGoal, 'purchase') || goalMentions(ctx.userGoal, 'buy')) {
       ctx.milestones.push(
         'reach_product',
         'add_to_cart',
@@ -33,7 +40,7 @@ export function initializeMilestones(ctx: GraphContext, force = false): void {
         'enter_payment_info',
         'complete_purchase'
       );
-    } else if (ctx.userGoal?.toLowerCase().includes('form')) {
+    } else if (goalMentions(ctx.userGoal, 'form')) {
       ctx.milestones.push(
         'find_form',
         'fill_form_fields',
