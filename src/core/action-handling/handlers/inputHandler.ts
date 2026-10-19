@@ -1,7 +1,7 @@
 import { GraphContext } from "../../../browserExecutor.js";
 import { getElement, verifyAction } from "../../../browserExecutor.js";
 import { SelectorFallbacks } from "../../elements/strategies/SelectorFallbacks.js";
-import { SuccessPatterns } from "../../../successPatterns.js";
+import { recordActionSuccess } from "../../../successPatterns.js";
 import { ensureElementVisible } from "../../../utils/visibilityUtils.js";
 import { highlightElement, setOverlayStatus } from "../../../utils/uiEffects.js";
 import logger from "../../../utils/logger.js";
@@ -120,13 +120,7 @@ export async function inputHandler(ctx: GraphContext): Promise<string> {
     
     ctx.history.push(`Input '${ctx.action.value}' to ${ctx.action.element}`);
     
-    try {
-      const domain = new URL(ctx.page.url()).hostname;
-      const successPatternsInstance = new SuccessPatterns();
-      successPatternsInstance.recordSuccess(ctx.action, domain);
-    } catch (error) {
-      logger.error("Error recording success pattern", error);
-    }
+    recordActionSuccess(ctx.action, ctx.page.url());
     
     logger.info("Input successful", {
       element: ctx.action.element,

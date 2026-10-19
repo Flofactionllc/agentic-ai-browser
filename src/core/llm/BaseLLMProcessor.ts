@@ -1,6 +1,8 @@
 import { LLMProcessor } from "./llmProcessor.js";
 import { GraphContext } from "../../browserExecutor.js";
 import { ActionExtractor } from '../actions/extractor.js';
+import { formatProgressForPrompt } from '../automation/progress.js';
+import { formatSessionNotesForPrompt } from '../sessionNotes.js';
 import logger from '../../utils/logger.js';
 import dotenv from "dotenv";
 dotenv.config();
@@ -185,11 +187,14 @@ protected static readonly SYSTEM_PROMPT = `
         truncationWarning += `INFO: The system automatically scrolled down to load more content on this page.\n`;
       }
 
+      const progressSection = formatProgressForPrompt(context);
+      const notesSection = formatSessionNotesForPrompt();
+
       let prompt = `
 ---
 ${context.userGoal ? `YOUR CURRENT TASK: ${context.userGoal}` : 'This is what the browser is currently displaying.'}
 ---
-${this.buildFeedbackSection(context)}
+${progressSection ? `${progressSection}\n` : ''}${this.buildFeedbackSection(context)}
 ${truncationWarning ? `\n${truncationWarning}\n` : ''}
 ---
 THIS IS THE STRUCTURED PAGE SUMMARY:
@@ -208,7 +213,7 @@ TASK HISTORY:
 ${context.compressedHistory ? context.compressedHistory.slice(-5).join('\n') : 
   context.history ? context.history.slice(-5).join('\n') : 'No previous actions.'}
 ---
-`;
+${notesSection ? `SESSION NOTES:\n${notesSection}\n---\n` : ''}`;
       // Clean up formatting
       prompt = prompt.replace(/[\t ]{2,}/g, ' ');
       

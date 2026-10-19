@@ -58,6 +58,59 @@ describe('Milestone Tracking', () => {
       expect(ctx.milestones).toContain('goal_completion');
       expect(ctx.recognizedMilestones).toEqual([]);
     });
+
+    test('does not treat research as a search task', () => {
+      const ctx = {
+        userGoal: 'research the history of papermaking',
+        history: []
+      } as GraphContext;
+
+      initializeMilestones(ctx);
+
+      expect(ctx.milestones).not.toContain('reach_search_page');
+      expect(ctx.milestones).toContain('goal_completion');
+    });
+
+    test('recognizes sign in as a login task', () => {
+      const ctx = {
+        userGoal: 'sign in to the archive',
+        history: []
+      } as GraphContext;
+
+      initializeMilestones(ctx);
+
+      expect(ctx.milestones).toContain('reach_login_page');
+      expect(ctx.milestones).toContain('login_successful');
+    });
+
+    test('fills milestones when the list was initialized empty', () => {
+      const ctx = {
+        userGoal: 'search for papers',
+        history: [],
+        milestones: [] as string[],
+        recognizedMilestones: [] as string[]
+      } as GraphContext;
+
+      initializeMilestones(ctx);
+
+      expect(ctx.milestones).toContain('reach_search_page');
+      expect(ctx.milestones).toContain('goal_completion');
+    });
+
+    test('rebuilds milestones when the goal changes', () => {
+      const ctx = {
+        userGoal: 'login to the archive',
+        history: [],
+        milestones: ['reach_search_page', 'goal_completion'],
+        recognizedMilestones: ['reach_search_page']
+      } as GraphContext;
+
+      initializeMilestones(ctx, true);
+
+      expect(ctx.milestones).toContain('reach_login_page');
+      expect(ctx.milestones).not.toContain('reach_search_page');
+      expect(ctx.recognizedMilestones).toEqual([]);
+    });
   });
 
   describe('checkMilestones', () => {

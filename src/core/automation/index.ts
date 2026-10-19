@@ -27,5 +27,6 @@ export {
   calculateProgressPercentage,
   isStuck,
   getProgressSummary,
+  formatProgressForPrompt,
   PageState
 } from './progress.js';

@@ -2,9 +2,14 @@ import fs from 'fs';
 import path from 'path';
 import { GraphContext } from "../../../browserExecutor.js";
 import logger from '../../../utils/logger.js';
+import { onNotesSessionReset, rememberSessionNote } from '../../sessionNotes.js';
 
 // Session-specific notes file
 let sessionNotesFile: string | null = null;
+
+onNotesSessionReset(() => {
+  sessionNotesFile = null;
+});
 
 export async function notesHandler(ctx: GraphContext): Promise<string> {
   if (!ctx.page || !ctx.action) throw new Error("Invalid context");
@@ -40,6 +45,7 @@ export async function notesHandler(ctx: GraphContext): Promise<string> {
       
       // Append to file (create if doesn't exist)
       await fs.promises.appendFile(sessionNotesFile, noteWithUrl + '\n\n');
+      rememberSessionNote(url, noteContent);
       
       // Update context
       ctx.lastActionSuccess = true;

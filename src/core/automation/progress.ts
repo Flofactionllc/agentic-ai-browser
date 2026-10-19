@@ -1,5 +1,6 @@
 import { GraphContext } from '../../browserExecutor.js';
 import logger from '../../utils/logger.js';
+import { getNextMilestone } from './milestones.js';
 
 /**
  * Interface representing a page state
@@ -96,4 +97,22 @@ export function getProgressSummary(ctx: GraphContext): string {
   const totalMilestones = ctx.milestones?.length || 0;
   
   return `Progress: ${percentage}% (${completedMilestones}/${totalMilestones} milestones)`;
+}
+
+/**
+ * Standing progress block for the action prompt. Empty until milestones exist.
+ */
+export function formatProgressForPrompt(ctx: GraphContext): string {
+  if (!ctx.milestones || ctx.milestones.length === 0) return '';
+
+  const done = ctx.recognizedMilestones ?? [];
+  const next = getNextMilestone(ctx);
+  const lines = [getProgressSummary(ctx)];
+  if (done.length > 0) {
+    lines.push(`Completed: ${done.join(', ')}`);
+  }
+  if (next) {
+    lines.push(`Next milestone: ${next.split('_').join(' ')}`);
+  }
+  return lines.join('\n');
 }

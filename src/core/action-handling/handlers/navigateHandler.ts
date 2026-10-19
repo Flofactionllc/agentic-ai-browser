@@ -1,6 +1,6 @@
 import { GraphContext } from "../../../browserExecutor.js";
 import { verifyAction } from "../../../browserExecutor.js";
-import { SuccessPatterns } from "../../../successPatterns.js";
+import { recordActionSuccess } from "../../../successPatterns.js";
 import { setOverlayStatus } from "../../../utils/uiEffects.js";
 import logger from "../../../utils/logger.js";
 
@@ -76,13 +76,7 @@ export async function navigateHandler(ctx: GraphContext): Promise<string> {
     
     ctx.history.push(`Navigated to: ${url}`);
     
-    try {
-      const domain = url.hostname;
-      const successPatternsInstance = new SuccessPatterns();
-      successPatternsInstance.recordSuccess(ctx.action, domain);
-    } catch (error) {
-      logger.error("Error recording success pattern", error);
-    }
+    recordActionSuccess(ctx.action, ctx.page.url());
     
     logger.info("Navigation successful", {
       url: ctx.action.value,
