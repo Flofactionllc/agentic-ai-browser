@@ -27,6 +27,26 @@
 - OpenStreetMap / ODbL when OSM data is shown
 - Inspiration notice: God’s Eye View (MIT) — Bilawal Sidhu
 
+## SKUs (v0.4)
+
+| SKU id | Unlocks |
+|---|---|
+| `emergency` | Emergency Services + HQ |
+| `insurance` | Insurance + HQ |
+| `media` | Media / Flo TV + HQ |
+| `staffing` | Staffing + HQ |
+| `command` | All divisions (default) |
+
+Set `FLO_EYE_SKU` / `VITE_FLO_EYE_SKU` or `?sku=emergency`. Clients can also `localStorage.flo-eye-sku`.
+
+## Access gate (sell demos)
+
+Set `FLO_EYE_ACCESS_CODE` in `.env`. Mission Control and the EMS host prompt for the code; session is an HttpOnly cookie (`flo_eye_session`, 24h). With no code configured the API stays **open-dev** for local work.
+
+## TomTom
+
+With `TOMTOM_API_KEY`, `/api/traffic` enriches FL corridor midpoints via TomTom Flow Segment Data. Without it, simulated congestion remains.
+
 ## Deploy gate
 
-Nothing ships publicly until Flofaction explicitly approves host, domain, and key vault. Local `npm run dev` / `npm start` only for v1.
+Nothing ships publicly until Flofaction explicitly approves host, domain, and key vault. Local `npm run dev` / `npm start` only until then.

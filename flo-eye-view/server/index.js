@@ -7,11 +7,16 @@ import cors from 'cors';
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { loadEnv } from './loadEnv.js';
+import { createAuthRouter, requireAuth, accessCodeConfigured } from './auth.js';
+import { enrichWithTomTom } from './tomtomTraffic.js';
+
+loadEnv();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.FLO_EYE_API_PORT || 5181);
 const HOST = process.env.FLO_EYE_API_HOST || '127.0.0.1';
-const UA = { 'User-Agent': 'FloEyeView/0.2 (Flofaction; local-dev)' };
+const UA = { 'User-Agent': 'FloEyeView/0.4 (Flofaction; local-dev)' };
 
 const NHC_MAP =
   'https://mapservices.weather.noaa.gov/tropical/rest/services/tropical/NHC_tropical_weather/MapServer';
@@ -39,8 +44,10 @@ const WALLET_LAYERS = {
 };
 
 const app = express();
-app.use(cors({ origin: [/localhost/, /127\.0\.0\.1/] }));
+app.use(cors({ origin: [/localhost/, /127\.0\.0\.1/], credentials: true }));
 app.use(express.json({ limit: '32kb' }));
+app.use(createAuthRouter(express));
+app.use(requireAuth);
 
 const cache = new Map();
 function cached(key, ttlMs, loader) {
@@ -56,9 +63,28 @@ app.get('/api/health', (_req, res) => {
   res.json({
     ok: true,
     product: 'flo-eye-view',
-    version: '0.3.0',
+    version: '0.4.0',
     firmsConfigured: Boolean(process.env.FIRMS_MAP_KEY),
     tomtomConfigured: Boolean(process.env.TOMTOM_API_KEY),
+    authRequired: accessCodeConfigured(),
+    sku: process.env.FLO_EYE_SKU || 'command',
+  });
+});
+
+const VALID_SKUS = ['emergency', 'insurance', 'media', 'staffing', 'command'];
+
+app.get('/api/product', (req, res) => {
+  const q = String(req.query.sku || '').toLowerCase();
+  const sku = VALID_SKUS.includes(q) ? q : process.env.FLO_EYE_SKU || 'command';
+  res.json({
+    sku,
+    brand: {
+      productName: process.env.FLO_EYE_BRAND_NAME || 'Flo Eye View',
+      company: process.env.FLO_EYE_BRAND_COMPANY || 'Flofaction',
+      shellName: 'Mission Control',
+      emsName: 'Emergency Management',
+    },
+    skus: VALID_SKUS,
   });
 });
 
@@ -180,11 +206,11 @@ app.get('/api/cameras', (_req, res) => {
   }
 });
 
-app.get('/api/traffic', (_req, res) => {
+app.get('/api/traffic', async (_req, res) => {
   try {
     const corridors = readExportArray('../src/data/floridaTraffic.js', 'FLORIDA_CORRIDORS');
     const hour = new Date().getUTCHours();
-    const segments = corridors.map((c, i) => {
+    const simulated = corridors.map((c, i) => {
       const seed = (hour * 17 + i * 13) % 100;
       let level = 'free';
       if (seed > 85) level = 'severe';
@@ -198,15 +224,30 @@ app.get('/api/traffic', (_req, res) => {
         coords: c.coords,
         level,
         speedIndex: Number(speedIndex.toFixed(2)),
+        source: 'simulated',
       };
     });
+
+    const key = process.env.TOMTOM_API_KEY;
+    if (!key) {
+      return res.json({
+        mode: 'simulated',
+        updatedAt: new Date().toISOString(),
+        segments: simulated,
+        note: 'Simulated FL corridor congestion — set TOMTOM_API_KEY for live Flow Segment Data',
+      });
+    }
+
+    const enriched = await cached(`traffic-tomtom-${hour}`, 2 * 60 * 1000, () =>
+      enrichWithTomTom(simulated, key, { userAgent: UA['User-Agent'] }),
+    );
     res.json({
-      mode: process.env.TOMTOM_API_KEY ? 'tomtom-pending' : 'simulated',
+      ...enriched,
       updatedAt: new Date().toISOString(),
-      segments,
-      note: process.env.TOMTOM_API_KEY
-        ? 'TomTom key present — live tiles not wired yet; serving simulated corridors'
-        : 'Simulated FL corridor congestion for Field View / Deployment',
+      note:
+        enriched.mode === 'tomtom'
+          ? `TomTom Flow Segment Data on ${enriched.enriched}/${simulated.length} corridors`
+          : 'TomTom key present but enrichment failed — simulated fallback',
     });
   } catch (err) {
     res.status(500).json({ error: String(err.message || err) });
@@ -319,4 +360,11 @@ function readExportArray(relPath, exportName) {
 
 app.listen(PORT, HOST, () => {
   console.log(`Flo Eye View API on http://${HOST}:${PORT}`);
+  console.log(
+    `  auth: ${accessCodeConfigured() ? 'ACCESS CODE REQUIRED' : 'open-dev (set FLO_EYE_ACCESS_CODE to lock)'}`,
+  );
+  console.log(`  sku: ${process.env.FLO_EYE_SKU || 'command'}`);
+  console.log(
+    `  tomtom: ${process.env.TOMTOM_API_KEY ? 'configured' : 'simulated traffic'}`,
+  );
 });

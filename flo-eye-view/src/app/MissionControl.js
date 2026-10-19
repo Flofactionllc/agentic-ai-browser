@@ -1,5 +1,11 @@
 import { Ion } from 'cesium';
 import { DIVISIONS, getDivision, getScreen, layersFromScreen } from '../config/divisions.js';
+import {
+  BRAND,
+  filterDivisions,
+  readSkuFromEnvOrQuery,
+  resolveSku,
+} from '../config/product.js';
 import { FLORIDA_HOME } from '../config/florida.js';
 import { FLORIDA_CAMERAS } from '../data/floridaCameras.js';
 import { createViewer, flyHome } from '../globe/createViewer.js';
@@ -15,8 +21,11 @@ export class MissionControl {
     this.root = root;
     this.options = options;
     this.apiBase = options.apiBase ?? '';
+    this.sku = options.sku || readSkuFromEnvOrQuery();
+    this.brand = { ...BRAND, ...(options.brand || {}) };
+    this.divisions = filterDivisions(DIVISIONS, this.sku);
     this.state = {
-      divisionId: options.divisionId ?? 'emergency',
+      divisionId: options.divisionId ?? this.divisions[0]?.id ?? 'emergency',
       screenId: options.screenId ?? 'storm-ops',
       layers: {},
       selectedCamera: null,
@@ -31,13 +40,17 @@ export class MissionControl {
     const ion = this.options.cesiumIonToken || power.cesiumIonToken;
     if (ion) Ion.defaultAccessToken = ion;
 
+    // Clamp division to SKU allowlist
+    if (!this.divisions.some((d) => d.id === this.state.divisionId)) {
+      this.state.divisionId = this.divisions[0]?.id || 'emergency';
+    }
+
     const division = getDivision(this.state.divisionId);
     const screen = getScreen(division, this.state.screenId);
     this.state.screenId = screen.id;
     this.state.layers = layersFromScreen(screen);
 
     this.root.innerHTML = renderShell(this._shellProps(division, screen));
-
     const globeEl = this.root.querySelector('[data-globe]');
     this.viewer = await createViewer(globeEl, {
       home: FLORIDA_HOME,
@@ -57,20 +70,37 @@ export class MissionControl {
 
   _shellProps(division, screen) {
     return {
-      divisions: DIVISIONS,
+      divisions: this.divisions,
       division,
       screen,
       layers: this.state.layers,
       selectedCamera: this.state.selectedCamera,
       storms: this.state.storms,
+      brand: this.brand,
+      sku: this.sku,
     };
   }
 
   async setDivision(divisionId) {
+    if (!this.divisions.some((d) => d.id === divisionId)) return;
     const division = getDivision(divisionId);
     this.state.divisionId = division.id;
     this.state.selectedCamera = null;
     await this.setScreen(division.screens[0].id);
+  }
+
+  setSku(skuId) {
+    this.sku = resolveSku(skuId);
+    try {
+      localStorage.setItem('flo-eye-sku', this.sku.id);
+    } catch {
+      // ignore
+    }
+    this.divisions = filterDivisions(DIVISIONS, this.sku);
+    if (!this.divisions.some((d) => d.id === this.state.divisionId)) {
+      return this.setDivision(this.divisions[0]?.id);
+    }
+    this._rerenderChrome();
   }
 
   async setScreen(screenId) {
@@ -193,9 +223,10 @@ export class MissionControl {
     window.FloEyeView = {
       setDivision: (id) => this.setDivision(id),
       setScreen: (id) => this.setScreen(id),
+      setSku: (id) => this.setSku(id),
       flyHome: () => flyHome(this.viewer, FLORIDA_HOME),
       flyToStorm: (id) => this.flyToStorm(id),
-      getState: () => ({ ...this.state }),
+      getState: () => ({ ...this.state, sku: this.sku.id }),
       selectCamera: (id) => this.setSelectedCamera(id),
     };
     window.addEventListener('message', (ev) => {
@@ -203,6 +234,7 @@ export class MissionControl {
       if (!msg || typeof msg !== 'object' || !String(msg.type || '').startsWith('flo-eye/')) return;
       if (msg.type === 'flo-eye/set-division') this.setDivision(msg.divisionId);
       if (msg.type === 'flo-eye/set-screen') this.setScreen(msg.screenId);
+      if (msg.type === 'flo-eye/set-sku') this.setSku(msg.skuId);
       if (msg.type === 'flo-eye/fly-home') flyHome(this.viewer, FLORIDA_HOME);
       if (msg.type === 'flo-eye/fly-storm') this.flyToStorm(msg.stormId);
       if (msg.type === 'flo-eye/select-camera') this.setSelectedCamera(msg.cameraId);

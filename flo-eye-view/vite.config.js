@@ -14,6 +14,12 @@ export default defineConfig({
       '/api': {
         target: 'http://127.0.0.1:5181',
         changeOrigin: true,
+        // Forward auth cookies for access-code gate
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq, req) => {
+            if (req.headers.cookie) proxyReq.setHeader('cookie', req.headers.cookie);
+          });
+        },
       },
     },
   },

@@ -53,6 +53,17 @@ Open:
 
 SKU matrix and must-not-ship list live in [`docs/COMMERCIAL.md`](docs/COMMERCIAL.md). Summary: MIT code we own, no TeleGeography/Bhote Koshi NC payloads, OpenSky not default, customer BYOK for Google/Cesium paid/TomTom/voice.
 
+```bash
+# Lock a prospect demo
+echo 'FLO_EYE_ACCESS_CODE=your-demo-code' >> .env
+echo 'FLO_EYE_SKU=emergency' >> .env
+
+# Optional live traffic
+echo 'TOMTOM_API_KEY=...' >> .env
+```
+
+SKU via URL: `http://127.0.0.1:5180/?sku=emergency&division=emergency&screen=storm-ops`
+
 ## Integrate into emergency management software
 
 ```js

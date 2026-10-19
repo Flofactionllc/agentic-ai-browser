@@ -14,6 +14,8 @@ export function renderShell({
   layers,
   selectedCamera = null,
   storms = [],
+  brand = { productName: 'Flo Eye View', company: 'Flofaction', shellName: 'Mission Control' },
+  sku = null,
 }) {
   const settings = loadPowerUp();
   const powered = Boolean(settings.cesiumIonToken || settings.firmsMapKey || settings.tomtomApiKey);
@@ -74,8 +76,8 @@ export function renderShell({
     <div class="mc-root" style="--division-accent:${division.accent}">
       <aside class="brand-rail" data-brand-rail>
         <div class="brand-mark">
-          <div class="brand-word">Flo Eye View</div>
-          <div class="brand-sub">Flofaction Mission Control</div>
+          <div class="brand-word">${escapeHtml(brand.productName)}</div>
+          <div class="brand-sub">${escapeHtml(brand.company)} ${escapeHtml(brand.shellName || 'Mission Control')}</div>
         </div>
         <nav class="div-nav" aria-label="Divisions">${divisionButtons}</nav>
         <div class="rail-actions">
@@ -92,6 +94,7 @@ export function renderShell({
         <div class="topbar-meta">
           <span class="pill">${division.flagship ? 'Flagship' : 'Division'}</span>
           <span class="pill">Florida theater</span>
+          ${sku ? `<span class="pill">${escapeHtml(sku.name || sku.id)}</span>` : ''}
         </div>
       </header>
 

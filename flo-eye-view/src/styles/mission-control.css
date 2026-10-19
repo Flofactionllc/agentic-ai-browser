@@ -12,6 +12,65 @@
   --font-ui: 'IBM Plex Sans', 'Segoe UI', sans-serif;
 }
 
+.auth-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(900px 500px at 20% 0%, rgba(196, 163, 90, 0.2), transparent 55%),
+    rgba(5, 8, 15, 0.92);
+  padding: 1rem;
+}
+.auth-card {
+  width: min(400px, 100%);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #0d1524;
+  padding: 1.25rem 1.3rem 1.35rem;
+  display: grid;
+  gap: 0.65rem;
+}
+.auth-brand {
+  font-family: var(--font-display);
+  font-size: 1.55rem;
+  letter-spacing: -0.02em;
+}
+.auth-sub {
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #c4a35a;
+  margin-top: -0.35rem;
+}
+.auth-card p { margin: 0; color: var(--muted); font-size: 0.88rem; line-height: 1.4; }
+.auth-card label {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.auth-card input {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #080e18;
+  color: var(--ink);
+  padding: 0.6rem 0.7rem;
+  font: inherit;
+}
+.auth-card button[type='submit'] {
+  border: 1px solid #e85d4c;
+  background: color-mix(in srgb, #e85d4c 22%, transparent);
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 0.55rem 0.9rem;
+  font: inherit;
+  cursor: pointer;
+}
+.auth-err { color: #ff8a7a !important; }
+.auth-note { font-size: 0.72rem !important; }
+
 * { box-sizing: border-box; }
 html, body, #app { height: 100%; margin: 0; }
 body {

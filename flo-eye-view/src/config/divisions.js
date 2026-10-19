@@ -183,7 +183,7 @@ export const LAYER_META = {
   insurance: { id: 'insurance', label: 'Territories', credit: 'Flofaction' },
   staffing: { id: 'staffing', label: 'Staffing', credit: 'Flofaction' },
   cameras: { id: 'cameras', label: 'FL Cameras', credit: 'Flofaction FL Field View pack' },
-  traffic: { id: 'traffic', label: 'FL Traffic', credit: 'Flofaction corridor sim (TomTom BYOK later)' },
+  traffic: { id: 'traffic', label: 'FL Traffic', credit: 'Flofaction corridors · TomTom when keyed' },
 };
 
 export function getDivision(id) {

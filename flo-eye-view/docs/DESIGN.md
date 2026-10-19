@@ -117,12 +117,19 @@ Pricing and contracts live outside this repo; the code paths are license-clean f
 - Storm Ops **active storm cards** with fly-to + NHC advisory links
 - EMS host **live Incident Brief** (`/api/brief`) and **Response Roster** (`/api/roster`)
 
+## v0.4 additions
+
+- **TomTom Flow Segment** enrichment on FL corridors when `TOMTOM_API_KEY` is set
+- **Access-code auth gate** (`FLO_EYE_ACCESS_CODE`) for sellable demos
+- **SKU / white-label** config — Emergency, Insurance, Media, Staffing, Command Suite
+
 ## Out of scope for current milestone
 
 - Voice control / OpenAI Realtime
 - Google Photorealistic 3D (BYOK later)
 - Live FL511 still redistribution (needs operator agreement)
-- Live TomTom vector tiles (key accepted; wiring next)
+- Full TomTom vector traffic tiles (flow-segment midpoints ship first)
+- Production SSO / multi-tenant IdP
 - TeleGeography cables / Nepal flood scene (NC — never ship)
 - Public internet deploy / production keys
 
