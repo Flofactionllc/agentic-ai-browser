@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Flofaction Emergency Management · Flo Eye View</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/host/host.css" />
+  </head>
+  <body>
+    <div class="ems-shell">
+      <header class="ems-top">
+        <div class="ems-brand">
+          <div class="ems-mark">Flofaction</div>
+          <div class="ems-product">Emergency Management</div>
+        </div>
+        <p class="ems-tag">Ops desk with Flo Eye View Mission Control embedded — Florida theater</p>
+        <div class="ems-status" data-host-status>Linking Mission Control…</div>
+      </header>
+
+      <nav class="ems-rail" aria-label="EMS modules">
+        <button type="button" class="ems-mod is-active" data-host-view="eye" data-division="emergency" data-screen="storm-ops">Storm Ops</button>
+        <button type="button" class="ems-mod" data-host-view="eye" data-division="emergency" data-screen="deployment-map">Deployment</button>
+        <button type="button" class="ems-mod" data-host-view="eye" data-division="emergency" data-screen="damage-assessment">Damage</button>
+        <button type="button" class="ems-mod" data-host-view="eye" data-division="emergency" data-screen="fire-watch">Fire Watch</button>
+        <button type="button" class="ems-mod" data-host-view="eye" data-division="emergency" data-screen="field-view">Field View</button>
+        <button type="button" class="ems-mod" data-host-view="eye" data-division="hq" data-screen="world-picture">HQ Picture</button>
+        <button type="button" class="ems-mod" data-host-view="eye" data-division="insurance" data-screen="storm-exposure">Insurance</button>
+        <button type="button" class="ems-mod" data-host-view="brief">Incident Brief</button>
+        <button type="button" class="ems-mod" data-host-view="roster">Response Roster</button>
+      </nav>
+
+      <main class="ems-main">
+        <section class="ems-eye" data-panel="eye">
+          <iframe
+            id="flo-eye"
+            title="Flo Eye View Mission Control"
+            src="/?division=emergency&screen=storm-ops"
+            allow="fullscreen"
+          ></iframe>
+        </section>
+
+        <section class="ems-panel" data-panel="brief" hidden>
+          <div class="ems-panel-head">
+            <h1>Incident Brief</h1>
+            <div class="ems-panel-actions">
+              <button type="button" class="ems-refresh" data-refresh-brief>Refresh</button>
+              <button type="button" class="ems-refresh" data-print-brief>Print / PDF</button>
+            </div>
+          </div>
+          <p class="ems-lede" data-brief-lede>Loading live NHC / fire / MARC posture…</p>
+          <div class="ems-kpis" data-brief-kpis></div>
+          <h2>Active storms</h2>
+          <div data-brief-storms></div>
+          <h2>Objectives</h2>
+          <ul data-brief-objectives></ul>
+          <p class="ems-footnote">Live geography stays in Flo Eye View. Open Storm Ops / Deployment from the rail to act.</p>
+        </section>
+
+        <section class="ems-panel" data-panel="roster" hidden>
+          <div class="ems-panel-head">
+            <h1>Response Roster</h1>
+            <button type="button" class="ems-refresh" data-refresh-roster>Refresh</button>
+          </div>
+          <p class="ems-lede">MARC hubs + staffing pins from Flofaction demo geography. Click a row to fly Mission Control home theater (Deployment Map).</p>
+          <table>
+            <thead><tr><th>Unit</th><th>Role</th><th>Status</th><th></th></tr></thead>
+            <tbody data-roster-body>
+              <tr><td colspan="4">Loading roster…</td></tr>
+            </tbody>
+          </table>
+        </section>
+      </main>
+    </div>
+    <script type="module" src="/host/host.js"></script>
+  </body>
+</html>

@@ -14,6 +14,18 @@ The Agentic AI Browser project represents a fundamental shift away from the "big
 
 Ready to try the Agentic AI Browser? See the [Developer's Guide](DEVELOPERS-GUIDE.md) for complete setup instructions, configuration options, and detailed documentation. A more detailed discussion of the project can be found in the [Project Paper](https://app.readytensor.ai/publications/adaptive-autonomous-ai-co-browser-xaHHBdNBf7sr)
 
+## Flo Eye View (Mission Control)
+
+Flofaction’s division-aware 3D situational awareness console lives in [`flo-eye-view/`](flo-eye-view/). It is the sellable ops globe for Emergency Services, Insurance, Media/Flo TV, Staffing, HQ, LUAP, and Books — Florida-centered, keyless Storm Ops by default, embeddable into the emergency-management suite.
+
+```bash
+cd flo-eye-view && npm install && npm run doctor
+npm run server   # API proxies on :5181
+npm run dev      # Mission Control on :5180
+```
+
+Inspection verdict, design, and commercial checklist: [`flo-eye-view/docs/`](flo-eye-view/docs/).
+
 ## 1. Behavioral Caching: Success Patterns Over Repeated Computation
 
 **Core Concept**: Instead of repeatedly solving the same problems through full-scale inference, LLMs can benefit from storing and reusing successful output sequences.
