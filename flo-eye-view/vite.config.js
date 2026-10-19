@@ -18,6 +18,8 @@ export default defineConfig({
         configure: (proxy) => {
           proxy.on('proxyReq', (proxyReq, req) => {
             if (req.headers.cookie) proxyReq.setHeader('cookie', req.headers.cookie);
+            const tomtom = req.headers['x-flo-eye-tomtom-key'];
+            if (tomtom) proxyReq.setHeader('x-flo-eye-tomtom-key', tomtom);
           });
         },
       },
