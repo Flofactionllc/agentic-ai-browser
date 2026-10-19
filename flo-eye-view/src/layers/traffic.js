@@ -1,4 +1,6 @@
-import { Cartesian3, Color } from 'cesium';
+import { Cartesian3, Color, UrlTemplateImageryProvider, ImageryLayer } from 'cesium';
+import { apiFetch } from '../lib/apiFetch.js';
+import { loadPowerUp } from '../ui/PowerUp.js';
 
 const LEVEL_COLOR = {
   free: '#4ce8a0',
@@ -9,20 +11,23 @@ const LEVEL_COLOR = {
 
 /**
  * Florida corridor traffic — simulated congestion by default.
- * When Power Up has a TomTom key, server may mark mode=tomtom later.
+ * TomTom Flow Segment (+ optional relative-flow raster tiles) when keyed.
  */
 export function createTrafficLayer(viewer, apiBase = '') {
   const entities = [];
   let pollTimer = null;
   let mode = 'simulated';
+  let tileLayer = null;
+  let note = '';
 
   async function refresh() {
     clearEntities();
     try {
-      const res = await fetch(`${apiBase}/api/traffic`);
+      const res = await apiFetch('/api/traffic', { apiBase, tomtomByok: true });
       if (!res.ok) throw new Error(`traffic ${res.status}`);
       const data = await res.json();
       mode = data.mode || 'simulated';
+      note = data.note || '';
       for (const seg of data.segments ?? []) {
         const positions = (seg.coords || [])
           .map(([lon, lat]) => {
@@ -46,9 +51,36 @@ export function createTrafficLayer(viewer, apiBase = '') {
           }),
         );
       }
+      await ensureTileOverlay(data.tilesAvailable);
       viewer.scene.requestRender();
     } catch (err) {
       console.warn('[flo-eye] traffic layer:', err.message);
+    }
+  }
+
+  async function ensureTileOverlay(serverTiles) {
+    clearTiles();
+    const byok = loadPowerUp().tomtomApiKey;
+    let url;
+    if (byok) {
+      url = `https://api.tomtom.com/traffic/map/4/tile/flow/relative/{z}/{x}/{y}.png?key=${encodeURIComponent(byok)}&tileSize=256`;
+    } else if (serverTiles) {
+      url = `${apiBase || ''}/api/traffic/tiles/{z}/{x}/{y}.png`;
+    } else {
+      return;
+    }
+    try {
+      const provider = new UrlTemplateImageryProvider({
+        url,
+        maximumLevel: 18,
+        credit: 'TomTom Traffic',
+      });
+      tileLayer = viewer.imageryLayers.addImageryProvider(provider);
+      if (tileLayer instanceof ImageryLayer) {
+        tileLayer.alpha = 0.55;
+      }
+    } catch (err) {
+      console.warn('[flo-eye] traffic tiles:', err.message);
     }
   }
 
@@ -57,8 +89,16 @@ export function createTrafficLayer(viewer, apiBase = '') {
     entities.length = 0;
   }
 
+  function clearTiles() {
+    if (tileLayer) {
+      viewer.imageryLayers.remove(tileLayer, true);
+      tileLayer = null;
+    }
+  }
+
   return {
     getMode: () => mode,
+    getNote: () => note,
     async enable() {
       await refresh();
       pollTimer = setInterval(refresh, 2 * 60 * 1000);
@@ -67,6 +107,7 @@ export function createTrafficLayer(viewer, apiBase = '') {
       if (pollTimer) clearInterval(pollTimer);
       pollTimer = null;
       clearEntities();
+      clearTiles();
     },
     destroy() {
       this.disable();

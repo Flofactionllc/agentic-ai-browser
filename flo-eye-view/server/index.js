@@ -10,13 +10,20 @@ import path from 'node:path';
 import { loadEnv } from './loadEnv.js';
 import { createAuthRouter, requireAuth, accessCodeConfigured } from './auth.js';
 import { enrichWithTomTom } from './tomtomTraffic.js';
+import { createTomTomTileHandler, tomtomTileStatus } from './tomtomTiles.js';
 
 loadEnv();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.FLO_EYE_API_PORT || 5181);
 const HOST = process.env.FLO_EYE_API_HOST || '127.0.0.1';
-const UA = { 'User-Agent': 'FloEyeView/0.4 (Flofaction; local-dev)' };
+const UA = { 'User-Agent': 'FloEyeView/0.5 (Flofaction; local-dev)' };
+
+function resolveTomTomKey(req) {
+  const header = req?.headers?.['x-flo-eye-tomtom-key'];
+  if (header && String(header).trim()) return String(header).trim();
+  return process.env.TOMTOM_API_KEY || '';
+}
 
 const NHC_MAP =
   'https://mapservices.weather.noaa.gov/tropical/rest/services/tropical/NHC_tropical_weather/MapServer';
@@ -44,7 +51,13 @@ const WALLET_LAYERS = {
 };
 
 const app = express();
-app.use(cors({ origin: [/localhost/, /127\.0\.0\.1/], credentials: true }));
+app.use(
+  cors({
+    origin: [/localhost/, /127\.0\.0\.1/],
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'X-Flo-Eye-TomTom-Key'],
+  }),
+);
 app.use(express.json({ limit: '32kb' }));
 app.use(createAuthRouter(express));
 app.use(requireAuth);
@@ -63,11 +76,12 @@ app.get('/api/health', (_req, res) => {
   res.json({
     ok: true,
     product: 'flo-eye-view',
-    version: '0.4.0',
+    version: '0.5.0',
     firmsConfigured: Boolean(process.env.FIRMS_MAP_KEY),
     tomtomConfigured: Boolean(process.env.TOMTOM_API_KEY),
     authRequired: accessCodeConfigured(),
     sku: process.env.FLO_EYE_SKU || 'command',
+    tiles: tomtomTileStatus(Boolean(process.env.TOMTOM_API_KEY)),
   });
 });
 
@@ -206,7 +220,7 @@ app.get('/api/cameras', (_req, res) => {
   }
 });
 
-app.get('/api/traffic', async (_req, res) => {
+app.get('/api/traffic', async (req, res) => {
   try {
     const corridors = readExportArray('../src/data/floridaTraffic.js', 'FLORIDA_CORRIDORS');
     const hour = new Date().getUTCHours();
@@ -228,21 +242,25 @@ app.get('/api/traffic', async (_req, res) => {
       };
     });
 
-    const key = process.env.TOMTOM_API_KEY;
+    const key = resolveTomTomKey(req);
+    const tilesAvailable = Boolean(key || process.env.TOMTOM_API_KEY);
     if (!key) {
       return res.json({
         mode: 'simulated',
         updatedAt: new Date().toISOString(),
         segments: simulated,
-        note: 'Simulated FL corridor congestion — set TOMTOM_API_KEY for live Flow Segment Data',
+        tilesAvailable: false,
+        note: 'Simulated FL corridor congestion — set TOMTOM_API_KEY or Power Up TomTom key for live data',
       });
     }
 
-    const enriched = await cached(`traffic-tomtom-${hour}`, 2 * 60 * 1000, () =>
+    const cacheKey = `traffic-tomtom-${hour}-${key.slice(0, 6)}`;
+    const enriched = await cached(cacheKey, 2 * 60 * 1000, () =>
       enrichWithTomTom(simulated, key, { userAgent: UA['User-Agent'] }),
     );
     res.json({
       ...enriched,
+      tilesAvailable,
       updatedAt: new Date().toISOString(),
       note:
         enriched.mode === 'tomtom'
@@ -253,6 +271,14 @@ app.get('/api/traffic', async (_req, res) => {
     res.status(500).json({ error: String(err.message || err) });
   }
 });
+
+app.get(
+  '/api/traffic/tiles/:z/:x/:y.png',
+  createTomTomTileHandler({
+    getApiKey: resolveTomTomKey,
+    userAgent: UA['User-Agent'],
+  }),
+);
 
 app.get('/api/brief', async (_req, res) => {
   try {

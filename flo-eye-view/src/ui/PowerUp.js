@@ -43,8 +43,8 @@ export function renderPowerUpModal(settings = {}) {
         <label>NASA FIRMS MAP_KEY
           <input data-power-field="firmsMapKey" type="password" autocomplete="off" placeholder="${firms || 'optional'}" />
         </label>
-        <label>TomTom API key (traffic — later)
-          <input data-power-field="tomtomApiKey" type="password" autocomplete="off" placeholder="${tomtom || 'optional'}" />
+        <label>TomTom API key (Flow Segment + relative-flow tiles)
+          <input data-power-field="tomtomApiKey" type="password" autocomplete="off" placeholder="${tomtom || 'optional BYOK'}" />
         </label>
         <div class="power-actions">
           <button type="button" data-power-save>Save locally</button>

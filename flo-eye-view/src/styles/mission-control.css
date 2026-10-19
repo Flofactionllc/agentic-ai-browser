@@ -157,6 +157,38 @@ body {
 }
 .div-name { font-size: 0.86rem; }
 
+.sku-block {
+  padding: 0 0.85rem 0.65rem;
+}
+.sku-label {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.sku-label select {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #080e18;
+  color: var(--ink);
+  padding: 0.45rem 0.5rem;
+  font: inherit;
+  font-size: 0.78rem;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.brief-link {
+  text-decoration: none;
+  text-align: center;
+}
+.pill.traffic-mode {
+  border-color: color-mix(in srgb, #4ce8a0 40%, var(--line));
+  color: #9dffc9;
+}
+
 .rail-actions {
   display: flex;
   flex-direction: column;

@@ -7,6 +7,7 @@ import {
   LabelStyle,
   VerticalOrigin,
 } from 'cesium';
+import { apiFetch } from '../lib/apiFetch.js';
 
 /**
  * NOAA NHC active storms + forecast cone/track via Flo Eye View proxy.
@@ -19,7 +20,7 @@ export function createCyclonesLayer(viewer, apiBase = '', { onStorms } = {}) {
   async function refresh() {
     clearEntities();
     try {
-      const res = await fetch(`${apiBase}/api/cyclones`);
+      const res = await apiFetch('/api/cyclones', { apiBase });
       if (!res.ok) throw new Error(`cyclones ${res.status}`);
       const data = await res.json();
       const storms = normalizeStorms(data);
@@ -40,8 +41,9 @@ export function createCyclonesLayer(viewer, apiBase = '', { onStorms } = {}) {
   async function plotGeometry(storm) {
     if (!storm.binNumber) return;
     try {
-      const res = await fetch(
-        `${apiBase}/api/cyclones/geometry?bin=${encodeURIComponent(storm.binNumber)}`,
+      const res = await apiFetch(
+        `/api/cyclones/geometry?bin=${encodeURIComponent(storm.binNumber)}`,
+        { apiBase },
       );
       if (!res.ok) return;
       const geo = await res.json();

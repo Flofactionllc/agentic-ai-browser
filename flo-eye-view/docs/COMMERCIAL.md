@@ -27,7 +27,7 @@
 - OpenStreetMap / ODbL when OSM data is shown
 - Inspiration notice: God’s Eye View (MIT) — Bilawal Sidhu
 
-## SKUs (v0.4)
+## SKUs (v0.5)
 
 | SKU id | Unlocks |
 |---|---|
@@ -37,15 +37,20 @@
 | `staffing` | Staffing + HQ |
 | `command` | All divisions (default) |
 
-Set `FLO_EYE_SKU` / `VITE_FLO_EYE_SKU` or `?sku=emergency`. Clients can also `localStorage.flo-eye-sku`.
+Set `FLO_EYE_SKU` / `VITE_FLO_EYE_SKU` or `?sku=emergency`. Mission Control rail has a SKU picker; **Copy demo link** snapshots `sku` + division + screen. Clients can also `localStorage.flo-eye-sku`.
 
 ## Access gate (sell demos)
 
-Set `FLO_EYE_ACCESS_CODE` in `.env`. Mission Control and the EMS host prompt for the code; session is an HttpOnly cookie (`flo_eye_session`, 24h). With no code configured the API stays **open-dev** for local work.
+Set `FLO_EYE_ACCESS_CODE` in `.env`. Mission Control and the EMS host prompt for the code; session is an HttpOnly cookie (`flo_eye_session`, 24h). With no code configured the API stays **open-dev** for local work. Layer fetches send `credentials: 'include'`.
 
 ## TomTom
 
-With `TOMTOM_API_KEY`, `/api/traffic` enriches FL corridor midpoints via TomTom Flow Segment Data. Without it, simulated congestion remains.
+With `TOMTOM_API_KEY` (server) or Power Up TomTom BYOK (`X-Flo-Eye-TomTom-Key`):
+
+1. `/api/traffic` enriches FL corridor midpoints via Flow Segment Data
+2. Relative-flow raster tiles — BYOK loads TomTom directly; server key uses `/api/traffic/tiles/{z}/{x}/{y}.png`
+
+Without a key, simulated congestion remains.
 
 ## Deploy gate
 

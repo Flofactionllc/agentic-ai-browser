@@ -1,4 +1,5 @@
 import { Cartesian3, Color } from 'cesium';
+import { apiFetch } from '../lib/apiFetch.js';
 
 /** NIFC WFIGS current fire perimeters — keyless via local /api/fire-perimeters proxy. */
 export function createFiresLayer(viewer, apiBase = '') {
@@ -8,8 +9,7 @@ export function createFiresLayer(viewer, apiBase = '') {
     clearEntities();
     try {
       // Prefer local proxy (avoids browser CORS). Direct WFIGS is server-side only.
-      const url = `${apiBase}/api/fire-perimeters`;
-      const res = await fetch(url);
+      const res = await apiFetch('/api/fire-perimeters', { apiBase });
       if (!res.ok) throw new Error(`fires ${res.status}`);
       const geo = await res.json();
       for (const feature of geo.features ?? []) {

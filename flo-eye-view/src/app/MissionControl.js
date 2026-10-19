@@ -30,6 +30,7 @@ export class MissionControl {
       layers: {},
       selectedCamera: null,
       storms: [],
+      trafficMode: null,
     };
     this.viewer = null;
     this.layers = null;
@@ -62,6 +63,7 @@ export class MissionControl {
       onStorms: (storms) => this.setStorms(storms),
     });
     await this.layers.setLayers(this.state.layers);
+    this.refreshTrafficModeBadge();
     this._bindChrome();
     this._bindEmbedApi();
     this._syncUrl();
@@ -78,6 +80,7 @@ export class MissionControl {
       storms: this.state.storms,
       brand: this.brand,
       sku: this.sku,
+      trafficMode: this.state.trafficMode,
     };
   }
 
@@ -100,7 +103,40 @@ export class MissionControl {
     if (!this.divisions.some((d) => d.id === this.state.divisionId)) {
       return this.setDivision(this.divisions[0]?.id);
     }
+    this._syncUrl();
     this._rerenderChrome();
+    this._notifyParent();
+  }
+
+  async shareDemoUrl() {
+    const url = new URL(window.location.href);
+    url.searchParams.set('sku', this.sku.id);
+    url.searchParams.set('division', this.state.divisionId);
+    url.searchParams.set('screen', this.state.screenId);
+    const text = url.toString();
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      window.prompt('Copy demo link', text);
+    }
+    return text;
+  }
+
+  refreshTrafficModeBadge() {
+    const mode = this.layers?.layers?.traffic?.getMode?.();
+    if (!mode) return;
+    const label =
+      mode === 'tomtom'
+        ? 'Traffic: TomTom live'
+        : mode === 'simulated-fallback'
+          ? 'Traffic: sim fallback'
+          : 'Traffic: simulated';
+    if (this.state.trafficMode !== label) {
+      this.state.trafficMode = label;
+      const el = this.root.querySelector('[data-traffic-mode]');
+      if (el) el.textContent = label;
+      else this._rerenderChrome();
+    }
   }
 
   async setScreen(screenId) {
@@ -119,7 +155,9 @@ export class MissionControl {
     this.state.layers = { ...this.state.layers, [id]: on };
     if (id === 'cameras' && !on) this.state.selectedCamera = null;
     if (id === 'cyclones' && !on) this.state.storms = [];
+    if (id === 'traffic' && !on) this.state.trafficMode = null;
     await this.layers.setLayers(this.state.layers);
+    if (id === 'traffic' && on) this.refreshTrafficModeBadge();
     this._rerenderChrome();
   }
 
@@ -154,18 +192,27 @@ export class MissionControl {
     bindShell(this.root, {
       onDivision: (id) => this.setDivision(id),
       onScreen: (id) => this.setScreen(id),
+      onSku: (id) => this.setSku(id),
+      onShareUrl: () => this.shareDemoUrl(),
       onLayerToggle: (id, on) => this.toggleLayer(id, on),
       onHome: () => flyHome(this.viewer, FLORIDA_HOME),
       onImageryMode: (mode) => this.layers?.layers?.imagery?.setMode?.(mode),
       onCameraSelect: (id) => this.setSelectedCamera(id),
       onFlyStorm: (id) => this.flyToStorm(id),
-      onPowerSave: (settings) => {
+      onPowerSave: async (settings) => {
         if (settings.cesiumIonToken) {
           Ion.defaultAccessToken = settings.cesiumIonToken;
+        }
+        // Re-pull traffic when TomTom BYOK changes
+        if (this.state.layers.traffic) {
+          await this.layers?.layers?.traffic?.disable?.();
+          await this.layers?.layers?.traffic?.enable?.();
+          this.refreshTrafficModeBadge();
         }
         this._rerenderChrome();
       },
     });
+    this.refreshTrafficModeBadge();
   }
 
   _rerenderChrome() {
@@ -198,6 +245,7 @@ export class MissionControl {
 
   _syncUrl() {
     const url = new URL(window.location.href);
+    url.searchParams.set('sku', this.sku.id);
     url.searchParams.set('division', this.state.divisionId);
     url.searchParams.set('screen', this.state.screenId);
     history.replaceState({}, '', url);
@@ -208,9 +256,11 @@ export class MissionControl {
       window.parent?.postMessage(
         {
           type: 'flo-eye/state',
+          sku: this.sku.id,
           divisionId: this.state.divisionId,
           screenId: this.state.screenId,
           stormCount: this.state.storms.length,
+          trafficMode: this.state.trafficMode,
         },
         '*',
       );

@@ -1,4 +1,5 @@
 import { Cartesian3, Color, HeightReference, UrlTemplateImageryProvider } from 'cesium';
+import { apiFetch } from '../lib/apiFetch.js';
 
 /**
  * Active-fire awareness:
@@ -30,7 +31,7 @@ export function createFirmsLayer(viewer, apiBase = '') {
 
   async function enablePoints() {
     try {
-      const res = await fetch(`${apiBase}/api/firms?format=geojson`);
+      const res = await apiFetch('/api/firms?format=geojson', { apiBase });
       if (res.status === 501) {
         status = 'imagery-only';
         return;

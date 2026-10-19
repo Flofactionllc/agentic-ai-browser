@@ -124,6 +124,11 @@ body {
   gap: 1rem;
   margin-bottom: 0.5rem;
 }
+.ems-panel-actions {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
 .ems-refresh, .linkish {
   border: 1px solid var(--line);
   background: transparent;
@@ -196,4 +201,13 @@ body {
   .ems-rail { flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--line); }
   .ems-mod { white-space: nowrap; }
   .ems-tag { display: none; }
+}
+
+@media print {
+  body { background: #fff; color: #111; }
+  .ems-rail, .ems-top, .ems-panel-actions, [data-panel='eye'], [data-panel='roster'] { display: none !important; }
+  .ems-shell { display: block; height: auto; }
+  .ems-main { padding: 0; }
+  .ems-panel { display: block !important; color: #111; }
+  .kpi, .brief-storm { border-color: #ccc; break-inside: avoid; }
 }

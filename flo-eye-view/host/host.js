@@ -58,6 +58,10 @@ async function boot() {
 
   document.querySelector('[data-refresh-brief]')?.addEventListener('click', () => loadBrief());
   document.querySelector('[data-refresh-roster]')?.addEventListener('click', () => loadRoster());
+  document.querySelector('[data-print-brief]')?.addEventListener('click', () => {
+    showPanel('brief');
+    window.print();
+  });
 
   async function loadBrief() {
     const lede = document.querySelector('[data-brief-lede]');

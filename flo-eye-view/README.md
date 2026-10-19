@@ -62,7 +62,9 @@ echo 'FLO_EYE_SKU=emergency' >> .env
 echo 'TOMTOM_API_KEY=...' >> .env
 ```
 
-SKU via URL: `http://127.0.0.1:5180/?sku=emergency&division=emergency&screen=storm-ops`
+SKU via URL or rail picker: `http://127.0.0.1:5180/?sku=emergency&division=emergency&screen=storm-ops`
+
+Use **Copy demo link** in the brand rail to hand a prospect the exact SKU + screen. Power Up accepts a TomTom key for live Flow Segment + relative-flow tiles.
 
 ## Integrate into emergency management software
 

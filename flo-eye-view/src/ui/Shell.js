@@ -1,4 +1,5 @@
 import { LAYER_META } from '../config/divisions.js';
+import { SKUS } from '../config/product.js';
 import { FLORIDA_CAMERAS } from '../data/floridaCameras.js';
 import {
   renderPowerUpButton,
@@ -16,9 +17,16 @@ export function renderShell({
   storms = [],
   brand = { productName: 'Flo Eye View', company: 'Flofaction', shellName: 'Mission Control' },
   sku = null,
+  trafficMode = null,
 }) {
   const settings = loadPowerUp();
   const powered = Boolean(settings.cesiumIonToken || settings.firmsMapKey || settings.tomtomApiKey);
+  const skuOptions = Object.values(SKUS)
+    .map(
+      (s) =>
+        `<option value="${escapeHtml(s.id)}" ${sku?.id === s.id ? 'selected' : ''}>${escapeHtml(s.name)}</option>`,
+    )
+    .join('');
 
   const divisionButtons = divisions
     .map(
@@ -80,9 +88,16 @@ export function renderShell({
           <div class="brand-sub">${escapeHtml(brand.company)} ${escapeHtml(brand.shellName || 'Mission Control')}</div>
         </div>
         <nav class="div-nav" aria-label="Divisions">${divisionButtons}</nav>
+        <div class="sku-block" data-sku-block>
+          <label class="sku-label">SKU
+            <select data-sku-select aria-label="Product SKU">${skuOptions}</select>
+          </label>
+        </div>
         <div class="rail-actions">
           ${renderPowerUpButton(powered)}
+          <button type="button" class="home-btn" data-share-url>Copy demo link</button>
           <button type="button" class="home-btn" data-home>Florida home</button>
+          <a class="home-btn brief-link" href="/host/" target="_blank" rel="noopener">EMS host</a>
         </div>
       </aside>
 
@@ -95,6 +110,7 @@ export function renderShell({
           <span class="pill">${division.flagship ? 'Flagship' : 'Division'}</span>
           <span class="pill">Florida theater</span>
           ${sku ? `<span class="pill">${escapeHtml(sku.name || sku.id)}</span>` : ''}
+          ${trafficMode ? `<span class="pill traffic-mode" data-traffic-mode>${escapeHtml(trafficMode)}</span>` : ''}
         </div>
       </header>
 
@@ -195,6 +211,25 @@ export function bindShell(root, handlers) {
   });
   const home = root.querySelector('[data-home]');
   if (home) home.onclick = () => handlers.onHome();
+  const share = root.querySelector('[data-share-url]');
+  if (share) {
+    share.onclick = async () => {
+      try {
+        await handlers.onShareUrl?.();
+        const prev = share.textContent;
+        share.textContent = 'Link copied';
+        setTimeout(() => {
+          share.textContent = prev;
+        }, 1600);
+      } catch {
+        share.textContent = 'Copy failed';
+      }
+    };
+  }
+  const skuSelect = root.querySelector('[data-sku-select]');
+  if (skuSelect) {
+    skuSelect.onchange = () => handlers.onSku?.(skuSelect.value);
+  }
   root.querySelectorAll('[data-imagery-mode]').forEach((btn) => {
     btn.onclick = () => {
       root.querySelectorAll('[data-imagery-mode]').forEach((b) => b.classList.remove('is-active'));

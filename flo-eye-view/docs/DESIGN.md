@@ -123,12 +123,20 @@ Pricing and contracts live outside this repo; the code paths are license-clean f
 - **Access-code auth gate** (`FLO_EYE_ACCESS_CODE`) for sellable demos
 - **SKU / white-label** config — Emergency, Insurance, Media, Staffing, Command Suite
 
+## v0.5 additions
+
+- **SKU picker + Copy demo link** in Mission Control rail (URL syncs `sku` / `division` / `screen`)
+- **TomTom relative-flow raster tiles** — Power Up BYOK direct, or proxied `/api/traffic/tiles/{z}/{x}/{y}.png` when server-keyed
+- **BYOK TomTom header** `X-Flo-Eye-TomTom-Key` on `/api/traffic` (credentials on all layer fetches)
+- **EMS Incident Brief Print / PDF**
+- Traffic mode pill in topbar
+
 ## Out of scope for current milestone
 
 - Voice control / OpenAI Realtime
 - Google Photorealistic 3D (BYOK later)
 - Live FL511 still redistribution (needs operator agreement)
-- Full TomTom vector traffic tiles (flow-segment midpoints ship first)
+- TomTom vector traffic tiles (raster flow + Flow Segment midpoints ship)
 - Production SSO / multi-tenant IdP
 - TeleGeography cables / Nepal flood scene (NC — never ship)
 - Public internet deploy / production keys
